@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
-from .models import Customer, ReminderLog, RunLog, Subscription, User
+from .models import Customer, ReminderLog, RunLog, Subscription, User, UserSetting
 from .security import hash_password, new_csrf, verify_password
 from .services import appsettings, importer
 from .services.util import add_one_year, fmt_date, normalize_phone, parse_date, valid_email
@@ -448,9 +448,16 @@ def distributor_toggle(uid: int, request: Request, user: User = Depends(admin_on
 
 
 # ---------------------------------------------------------------- account
+def _account_ctx(request, db, user):
+    st = request.app.state.settings
+    v = appsettings.dealer_values(st, db, user.id) if not user.is_admin else {}
+    return dict(ds=v, ds_secret={"smtp_password": bool(v.get("smtp_password")), "twilio_token": bool(v.get("twilio_token"))},
+                brand=st.brand_name)
+
+
 @router.get("/account", response_class=HTMLResponse)
-def account(request: Request, user: User = Depends(current_user)):
-    return render(request, "account.html", user, error=None)
+def account(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    return render(request, "account.html", user, error=None, **_account_ctx(request, db, user))
 
 
 @router.post("/account", dependencies=[Depends(csrf)])
@@ -459,12 +466,12 @@ def account_save(request: Request, name: str = Form(...), company: str = Form(""
                  user: User = Depends(current_user), db: Session = Depends(get_db)):
     cc = request.app.state.settings.country_code
     if phone.strip() and not normalize_phone(phone, cc):
-        return render(request, "account.html", user, error="Enter a valid mobile number.")
+        return render(request, "account.html", user, error="Enter a valid mobile number.", **_account_ctx(request, db, user))
     if new_password:
         if not verify_password(current_password, user.password_hash):
-            return render(request, "account.html", user, error="Current password is wrong.")
+            return render(request, "account.html", user, error="Current password is wrong.", **_account_ctx(request, db, user))
         if len(new_password) < 8:
-            return render(request, "account.html", user, error="New password must be at least 8 characters.")
+            return render(request, "account.html", user, error="New password must be at least 8 characters.", **_account_ctx(request, db, user))
         user.password_hash = hash_password(new_password)
     user.name, user.company, user.phone = name.strip(), company.strip(), normalize_phone(phone, cc)
     db.add(user)
@@ -515,3 +522,44 @@ def settings_test(request: Request, channel: str = Form(...), to: str = Form(...
                         "Marg Reminder test")
     flash(request, f"Test {channel} sent to {addr}." if ok else f"Test {channel} FAILED: {detail}")
     return go("/settings")
+
+
+# ---------------------------------------------------------------- dealer's own sender (optional override)
+@router.post("/account/sender", dependencies=[Depends(csrf)])
+async def sender_save(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    if user.is_admin:
+        raise HTTPException(403)
+    form = {k: str(v) for k, v in (await request.form()).items() if k != "csrf"}
+    if form.get("clear"):
+        db.query(UserSetting).filter(UserSetting.user_id == user.id).delete()
+        db.commit()
+        flash(request, "Your own sender was removed. Reminders now use the default sender.")
+        return go("/account")
+    try:
+        appsettings.dealer_save(request.app.state.settings, db, user.id, form)
+    except ValueError as e:
+        db.rollback()
+        return render(request, "account.html", user, error=str(e), **_account_ctx(request, db, user))
+    flash(request, "Sender settings saved.")
+    return go("/account")
+
+
+@router.post("/account/sender/test", dependencies=[Depends(csrf)])
+def sender_test(request: Request, channel: str = Form(...), to: str = Form(...), user: User = Depends(current_user),
+                db: Session = Depends(get_db)):
+    st, n = request.app.state.settings, request.app.state.notifier
+    if channel not in ("email", "sms") or user.is_admin:
+        raise HTTPException(400)
+    eff, own = appsettings.dealer_sender(st, db, user.id)
+    addr = to.strip() if channel == "email" else normalize_phone(to, st.country_code)
+    if not addr or (channel == "email" and not valid_email(addr)):
+        flash(request, "Enter a valid " + ("email address." if channel == "email" else "mobile number."))
+        return go("/account")
+    if not own[channel]:
+        flash(request, f"No complete {channel} sender saved yet, so reminders use the default sender.")
+        return go("/account")
+    ok, detail = n.with_settings(eff).send(channel, addr, "Test message from your own sender. It works!",
+                                           ["Test", "Marg ERP", "-", "-", user.company or user.name], "Test from your sender",
+                                           reply_to=user.email, from_name=user.company or user.name)
+    flash(request, f"Test {channel} sent to {addr}." if ok else f"Test {channel} FAILED: {detail}")
+    return go("/account")

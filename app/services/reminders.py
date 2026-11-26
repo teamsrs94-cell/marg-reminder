@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from ..config import Settings
 from ..models import Customer, ReminderLog, Subscription
+from . import appsettings
 from .notify import NotConfigured, Notifier
 from .util import fmt_date, normalize_phone, timing_text, valid_email
 
@@ -103,6 +104,29 @@ def run_reminders(db: Session, settings: Settings, notifier: Notifier, today: da
             return email if valid_email(email) else ""
         return normalize_phone(phone, settings.country_code)
 
+    sender_cache: dict[int, tuple[Notifier, dict[str, bool]]] = {}
+
+    def dealer_notifier(dist):
+        if dist.id not in sender_cache:
+            eff, own = appsettings.dealer_sender(settings, db, dist.id)
+            sender_cache[dist.id] = (notifier.with_settings(eff) if any(own.values()) else notifier, own)
+        return sender_cache[dist.id]
+
+    def send_as_dealer(dist, ch, to, text, params, subject):
+        """Buyer reminders go out FROM the dealer: their own Gmail/Twilio if set, otherwise the default sender
+        branded with the dealer's name and Reply-To. If the dealer's own account fails, fall back to default."""
+        dn, own = dealer_notifier(dist)
+        name = dist.company or dist.name
+        if own.get(ch):
+            ok, detail = dn.send(ch, to, text, params, subject, reply_to=dist.email, from_name=name)
+            if ok:
+                return ok, detail
+            ok2, d2 = notifier.send(ch, to, text, params, subject, reply_to=dist.email,
+                                    from_name=f"{name} via {settings.brand_name}")
+            return ok2, f"dealer sender failed ({detail}); sent via default" if ok2 else f"{detail} | default: {d2}"
+        return notifier.send(ch, to, text, params, subject, reply_to=dist.email,
+                             from_name=f"{name} via {settings.brand_name}")
+
     digests: dict[int, list[tuple[Subscription, int, int]]] = {}
     for sub in subs:
         days_left = (sub.expiry_date - today).days
@@ -118,7 +142,7 @@ def run_reminders(db: Session, settings: Settings, notifier: Notifier, today: da
                 if not to or (sub.id, sub.expiry_date, stage, "buyer", ch) in sent_keys:
                     continue
                 try:
-                    ok, detail = notifier.send(ch, to, text, params, subject)
+                    ok, detail = send_as_dealer(dist, ch, to, text, params, subject)
                 except NotConfigured:
                     out.skipped_unconfigured.add(ch)
                     continue
@@ -138,7 +162,8 @@ def run_reminders(db: Session, settings: Settings, notifier: Notifier, today: da
                 keep = {s.id for s, _ in pending}
                 text, params, subject = digest_text([(s, dl) for s, dl, _ in items if s.id in keep])
             try:
-                ok, detail = notifier.send(ch, to, text, params, subject)
+                # the dealer's own reminder always comes from the DEFAULT (platform) sender
+                ok, detail = notifier.send(ch, to, text, params, subject, from_name=settings.brand_name)
             except NotConfigured:
                 out.skipped_unconfigured.add(ch)
                 continue

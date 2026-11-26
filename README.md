@@ -30,6 +30,12 @@ Log in as the admin → **Settings**: set Gmail/SMTP, Twilio (or MSG91) SMS, the
 send test email/SMS from the page. Values apply instantly (no restart), secrets are stored encrypted in the database,
 and `.env` values are only the starting defaults.
 
+## Who sends what
+- **Buyer (Marg subscriber)** gets their reminder **from the dealer**: via the dealer's own Gmail/Twilio if they added
+  them on *My account*, otherwise via the default sender shown as "Dealer via <brand>" with Reply-To = the dealer.
+  If a dealer's own account fails, the default sender is used automatically.
+- **Dealer** always gets their daily digest from the **default sender** (set by the Super Admin in *Settings*, e.g. SRS).
+
 ## Fully automatic
 Nobody has to press anything. After `REMINDER_HOUR` every day the app finds due subscriptions and sends the buyer and
 distributor reminders, retries failures hourly (3 times), catches up after downtime, and emails `ADMIN_EMAIL` if a run

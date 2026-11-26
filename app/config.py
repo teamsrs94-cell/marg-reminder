@@ -13,6 +13,7 @@ def _days(v: str) -> list[int]:
 
 @dataclass
 class Settings:
+    brand_name: str = "Marg Reminder"
     secret_key: str = "dev-secret-change-me"
     database_url: str = "sqlite:///./marg_reminder.db"
     admin_email: str = ""
@@ -43,6 +44,7 @@ class Settings:
     def from_env(cls) -> "Settings":
         e = os.environ.get
         return cls(
+            brand_name=e("BRAND_NAME", cls.brand_name),
             secret_key=e("SECRET_KEY", cls.secret_key),
             database_url=e("DATABASE_URL", cls.database_url),
             admin_email=e("ADMIN_EMAIL", ""),

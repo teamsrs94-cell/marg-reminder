@@ -14,18 +14,21 @@ from app.services.util import normalize_phone
 
 
 class FakeNotifier(Notifier):
-    def __init__(self, settings, channels=("whatsapp", "sms", "email"), fail=()):
+    def __init__(self, settings, channels=("whatsapp", "sms", "email"), fail=(), fail_hosts=()):
         super().__init__(settings)
-        self.channels, self.fail, self.sent = channels, set(fail), []
+        self.channels, self.fail, self.fail_hosts, self.sent, self.meta = channels, set(fail), set(fail_hosts), [], []
 
     def configured(self, ch):
         return ch in self.channels
 
-    def send(self, ch, to, text, params, subject=""):
+    def send(self, ch, to, text, params, subject="", reply_to="", from_name=""):
         if ch not in self.channels:
             raise NotConfigured(ch)
         self.sent.append((ch, to, text))
-        return (ch not in self.fail, "ok" if ch not in self.fail else "boom")
+        self.meta.append(dict(ch=ch, to=to, smtp_from=self.s.smtp_from, twilio_from=self.s.twilio_from,
+                              reply_to=reply_to, from_name=from_name))
+        bad = ch in self.fail or (ch == "email" and self.s.smtp_host in self.fail_hosts)
+        return (not bad, "boom" if bad else "ok")
 
 
 @pytest.fixture
@@ -210,3 +213,71 @@ def test_super_admin_settings(env):
     # distributors cannot open it
     c.post("/logout", data={"csrf": csrf_of(c)})
     assert TestClient(app).get("/settings", follow_redirects=False).status_code == 303
+
+
+def _set_dealer_sender(app, s, did, **vals):
+    from app.services import appsettings
+
+    with app.state.Session() as db:
+        appsettings.dealer_save(s, db, did, vals)
+
+
+def test_buyer_from_dealer_and_digest_from_default(env):
+    app, _, n, s = env
+    s.smtp_host, s.smtp_from, s.brand_name = "smtp.default", "srs@default.com", "SRS Engineering"
+    did, _, _ = seed(app, 7)
+    today = date(2026, 11, 26)
+    # 1) no own sender: buyer mail via default, branded "Dev Traders via SRS Engineering", reply-to dealer
+    with app.state.Session() as db:
+        run_reminders(db, s, n, today)
+    buyer = next(m for m in n.meta if m["to"] == "b@x.com")
+    assert buyer["smtp_from"] == "srs@default.com" and buyer["reply_to"] == "d@x.com"
+    assert buyer["from_name"] == "Dev Traders via SRS Engineering"
+    digest = next(m for m in n.meta if m["to"] == "d@x.com" and m["ch"] == "email")
+    assert digest["smtp_from"] == "srs@default.com" and digest["from_name"] == "SRS Engineering"
+    # 2) dealer adds own Gmail + Twilio: buyer now gets it FROM the dealer; digest still from default
+    n.meta.clear(); n.sent.clear()
+    _set_dealer_sender(app, s, did, smtp_host="smtp.gmail.com", smtp_port="587", smtp_user="dev@gmail.com",
+                       smtp_password="pw", smtp_from="dev@gmail.com", twilio_sid="ACdev", twilio_token="t", twilio_from="+1999")
+    with app.state.Session() as db:
+        run_reminders(db, s, n, today + timedelta(days=6))  # next stage -> sends again
+    buyer = next(m for m in n.meta if m["to"] == "b@x.com")
+    assert buyer["smtp_from"] == "dev@gmail.com" and buyer["from_name"] == "Dev Traders"
+    assert next(m for m in n.meta if m["to"] == "919876543210" and m["ch"] == "sms")["twilio_from"] == "+1999"
+    digest = next(m for m in n.meta if m["to"] == "d@x.com" and m["ch"] == "email")
+    assert digest["smtp_from"] == "srs@default.com"
+
+
+def test_dealer_sender_failure_falls_back_to_default(env):
+    app, _, _, s = env
+    s.smtp_host, s.smtp_from = "smtp.default", "srs@default.com"
+    did, _, _ = seed(app, 1)
+    _set_dealer_sender(app, s, did, smtp_host="smtp.broken", smtp_user="u", smtp_password="p", smtp_from="dev@broken.com")
+    n = FakeNotifier(s, fail_hosts=("smtp.broken",))
+    with app.state.Session() as db:
+        r = run_reminders(db, s, n, date(2026, 11, 26))
+        assert r.failed == 0
+        log = db.scalar(select(ReminderLog).where(ReminderLog.to_address == "b@x.com", ReminderLog.channel == "email"))
+        assert log.status == "sent" and "sent via default" in log.detail
+    assert any(m["to"] == "b@x.com" and m["smtp_from"] == "srs@default.com" for m in n.meta)
+
+
+def test_dealer_sender_ui_encrypted(env):
+    from app.models import UserSetting
+    from app.security import hash_password
+
+    app, c, _, s = env
+    did, _, _ = seed(app, 7)
+    with app.state.Session() as db:
+        db.get(User, did).password_hash = hash_password("password1"); db.commit()
+    login(c, "d@x.com", "password1")
+    r = post(c, "/account/sender", {"smtp_host": "smtp.gmail.com", "smtp_user": "dev@gmail.com", "smtp_password": "secret-pw",
+                                    "smtp_from": "dev@gmail.com"}, "/account")
+    assert r.status_code == 303
+    with app.state.Session() as db:
+        assert "secret-pw" not in db.get(UserSetting, (did, "smtp_password")).value
+    assert "secret-pw" not in c.get("/account").text
+    assert c.get("/settings", follow_redirects=False).status_code == 403
+    post(c, "/account/sender", {"clear": "1"}, "/account")
+    with app.state.Session() as db:
+        assert db.query(UserSetting).count() == 0

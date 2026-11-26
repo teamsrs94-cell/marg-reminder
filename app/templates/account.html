@@ -1,4 +1,24 @@
-{% extends "base.html" %}{% import "macros.html" as m %}{% block title %}Account{% endblock %}
+{% extends "base.html" %}{% import "macros.html" as m %}{% block title %}Account
+{% if not user.is_admin %}
+<h2>Send my customers' reminders from my own accounts <span class="mute">(optional)</span></h2>
+<p class="mute">Your customers get their reminder <b>from you</b>. By default it's sent through {{ brand }} with your name and your replies come to you. Add your own Gmail / Twilio below and it will be sent from them instead. If your account ever fails, the default sender is used automatically. <b>You</b> always get your daily digest from {{ brand }}.</p>
+<form class="card" method="post" action="/account/sender"><input type="hidden" name="csrf" value="{{ csrf }}">
+<b>✉️ Your Gmail / SMTP</b><span class="mute"> (Gmail: smtp.gmail.com, 587, App Password)</span>
+<label>SMTP host</label><input name="smtp_host" value="{{ ds.smtp_host or '' }}"><label>Port</label><input name="smtp_port" type="number" value="{{ ds.smtp_port or 587 }}">
+<label>Username</label><input name="smtp_user" value="{{ ds.smtp_user or '' }}" autocomplete="off">
+<label>Password / App Password</label><input name="smtp_password" type="password" autocomplete="new-password" placeholder="{{ '•••••• saved — leave blank to keep' if ds_secret.smtp_password else 'not set' }}">
+<label>From address</label><input name="smtp_from" type="email" value="{{ ds.smtp_from or '' }}">
+<p style="margin-top:18px"><b>💬 Your Twilio</b></p>
+<label>Account SID</label><input name="twilio_sid" value="{{ ds.twilio_sid or '' }}" autocomplete="off">
+<label>Auth Token</label><input name="twilio_token" type="password" autocomplete="new-password" placeholder="{{ '•••••• saved — leave blank to keep' if ds_secret.twilio_token else 'not set' }}">
+<label>Sender number</label><input name="twilio_from" value="{{ ds.twilio_from or '' }}">
+<p class="row"><button class="btn">Save sender</button><button class="btn ghost" name="clear" value="1" onclick="return confirm('Remove your own sender?')">Remove my sender</button></p></form>
+<div class="card"><form method="post" action="/account/sender/test" class="row"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="channel" value="email">
+<input name="to" type="email" placeholder="Test email to…" required style="flex:1"><button class="btn ghost sm">Test email</button></form>
+<form method="post" action="/account/sender/test" class="row" style="margin-top:8px"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="channel" value="sms">
+<input name="to" type="tel" placeholder="Test SMS to…" required style="flex:1"><button class="btn ghost sm">Test SMS</button></form></div>
+{% endif %}
+{% endblock %}
 {% block body %}<h1>My account</h1>{{ m.err(error) }}
 <form class="card" method="post"><input type="hidden" name="csrf" value="{{ csrf }}">
 <label>Name</label><input name="name" required value="{{ user.name }}"><label>Company</label><input name="company" value="{{ user.company }}">
