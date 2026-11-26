@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from .models import Customer, ReminderLog, RunLog, Subscription, User
 from .security import hash_password, new_csrf, verify_password
-from .services import importer
+from .services import appsettings, importer
 from .services.util import add_one_year, fmt_date, normalize_phone, parse_date, valid_email
 
 router = APIRouter()
@@ -471,3 +471,47 @@ def account_save(request: Request, name: str = Form(...), company: str = Form(""
     db.commit()
     flash(request, "Saved.")
     return go("/account")
+
+
+# ---------------------------------------------------------------- super-admin settings
+def _settings_ctx(request, **extra):
+    s = request.app.state.settings
+    n = request.app.state.notifier
+    secrets_set = {k: bool(getattr(s, k)) for k, (_, sec) in appsettings.FIELDS.items() if sec}
+    return dict(s=s, days=",".join(map(str, s.reminder_days)), secrets_set=secrets_set,
+                ready={c: n.configured(c) for c in ("email", "sms", "whatsapp")}, **extra)
+
+
+@router.get("/settings", response_class=HTMLResponse)
+def settings_page(request: Request, user: User = Depends(admin_only)):
+    return render(request, "settings.html", user, error=None, **_settings_ctx(request))
+
+
+@router.post("/settings", dependencies=[Depends(csrf)])
+async def settings_save(request: Request, user: User = Depends(admin_only), db: Session = Depends(get_db)):
+    form = {k: str(v) for k, v in (await request.form()).items() if k != "csrf"}
+    try:
+        appsettings.save(request.app.state.settings, db, form)
+    except ValueError as e:
+        db.rollback()
+        return render(request, "settings.html", user, error=str(e) or "Invalid value", **_settings_ctx(request))
+    flash(request, "Settings saved. They apply immediately.")
+    return go("/settings")
+
+
+@router.post("/settings/test", dependencies=[Depends(csrf)])
+def settings_test(request: Request, channel: str = Form(...), to: str = Form(...), user: User = Depends(admin_only)):
+    s, n = request.app.state.settings, request.app.state.notifier
+    if channel not in ("email", "sms"):
+        raise HTTPException(400)
+    addr = to.strip() if channel == "email" else normalize_phone(to, s.country_code)
+    if not addr or (channel == "email" and not valid_email(addr)):
+        flash(request, "Test failed: enter a valid " + ("email address." if channel == "email" else "mobile number."))
+        return go("/settings")
+    if not n.configured(channel):
+        flash(request, f"Test failed: {channel} is not configured yet. Save the settings first.")
+        return go("/settings")
+    ok, detail = n.send(channel, addr, "Test message from Marg Reminder. Your setup works!", ["Test", "Marg ERP", "-", "-", "Marg Reminder"],
+                        "Marg Reminder test")
+    flash(request, f"Test {channel} sent to {addr}." if ok else f"Test {channel} FAILED: {detail}")
+    return go("/settings")

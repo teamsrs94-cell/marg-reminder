@@ -180,3 +180,33 @@ def test_run_daily_logs_and_alerts_admin(env):
         row = db.scalar(select(RunLog))
         assert row.failed == r.failed and row.trigger == "auto"
     assert any(to == "admin@x.com" and "failed" in t for _, to, t in app.state.notifier.sent)
+
+
+def test_super_admin_settings(env):
+    from app.models import AppSetting
+
+    app, c, n, s = env
+    app.state.notifier = Notifier(s)  # real notifier: configured() depends on settings
+    login(c, "admin@x.com", "adminpass1")
+    assert not app.state.notifier.configured("sms")
+    r = post(c, "/settings", {"reminder_days": "14,7,0", "reminder_hour": "9", "smtp_host": "smtp.gmail.com", "smtp_port": "587",
+                              "smtp_user": "me@gmail.com", "smtp_password": "app-pass", "smtp_from": "me@gmail.com",
+                              "sms_provider": "twilio", "twilio_sid": "AC1", "twilio_token": "tok", "twilio_from": "+1555"}, "/settings")
+    assert r.status_code == 303
+    assert s.reminder_days == [14, 7, 0] and s.reminder_hour == 9
+    assert app.state.notifier.configured("sms") and app.state.notifier.configured("email")
+    with app.state.Session() as db:
+        assert "app-pass" not in db.get(AppSetting, "smtp_password").value  # encrypted at rest
+    page = c.get("/settings").text
+    assert "app-pass" not in page and "saved" in page
+    post(c, "/settings", {"smtp_password": "", "smtp_host": "smtp2.x.com"}, "/settings")  # blank keeps secret
+    assert s.smtp_password == "app-pass" and s.smtp_host == "smtp2.x.com"
+    assert post(c, "/settings", {"reminder_hour": "99"}, "/settings").status_code == 200  # validation error
+    assert post(c, "/settings", {"reminder_days": "abc"}, "/settings").status_code == 200
+    # persists across restart
+    s2 = Settings(database_url=s.database_url, secret_key="k", enable_scheduler=False, admin_email="admin@x.com")
+    app2 = create_app(s2, n)
+    assert s2.twilio_token == "tok" and s2.reminder_days == [14, 7, 0]
+    # distributors cannot open it
+    c.post("/logout", data={"csrf": csrf_of(c)})
+    assert TestClient(app).get("/settings", follow_redirects=False).status_code == 303

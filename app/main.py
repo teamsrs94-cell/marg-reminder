@@ -14,6 +14,7 @@ from .config import Settings
 from .db import make_engine, make_session_factory
 from .models import RunLog, User
 from .security import LoginLimiter, hash_password
+from .services import appsettings
 from .services.notify import Notifier
 from .services.reminders import RunSummary, run_reminders
 
@@ -89,6 +90,8 @@ def create_app(settings: Settings | None = None, notifier: Notifier | None = Non
     engine = make_engine(settings.database_url)
     Session = make_session_factory(engine)
     bootstrap_admin(Session, settings)
+    with Session() as db:
+        appsettings.load_into(settings, db)
 
     @asynccontextmanager
     async def lifespan(app):

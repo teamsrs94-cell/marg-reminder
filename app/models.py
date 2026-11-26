@@ -95,3 +95,11 @@ class RunLog(Base):
     failed: Mapped[int] = mapped_column(Integer, default=0)
     summary: Mapped[str] = mapped_column(Text, default="")
     error: Mapped[str] = mapped_column(Text, default="")
+
+
+class AppSetting(Base):
+    """Super-admin editable configuration (secret values are stored encrypted)."""
+
+    __tablename__ = "app_settings"
+    key: Mapped[str] = mapped_column(String(60), primary_key=True)
+    value: Mapped[str] = mapped_column(Text, default="")

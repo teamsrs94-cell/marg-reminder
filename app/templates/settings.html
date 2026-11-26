@@ -1,0 +1,30 @@
+{% extends "base.html" %}{% import "macros.html" as m %}{% block title %}Settings{% endblock %}
+{% macro sec(name) %}<input name="{{ name }}" type="password" autocomplete="new-password" placeholder="{{ '•••••• saved — leave blank to keep' if secrets_set[name] else 'not set' }}">{% endmacro %}
+{% block body %}<h1>Settings <span class="mute">Super Admin</span></h1>{{ m.err(error) }}
+<div class="row" style="margin-bottom:12px">{% for c,ok in ready.items() %}<span class="badge {{ 'active' if ok else 'expired' }}">{{ c }}: {{ 'ready' if ok else 'not set up' }}</span>{% endfor %}</div>
+<form method="post"><input type="hidden" name="csrf" value="{{ csrf }}">
+<div class="card"><h2 style="margin-top:0">⏰ Automatic schedule</h2>
+<label>Reminder days (relative to expiry; negative = after expiry)</label><input name="reminder_days" value="{{ days }}" placeholder="30,15,7,1,0,-7">
+<label>Send daily after (hour, 0–23, {{ s.timezone }})</label><input name="reminder_hour" type="number" min="0" max="23" value="{{ s.reminder_hour }}">
+<label>Default country code</label><input name="country_code" value="{{ s.country_code }}"></div>
+<div class="card"><h2 style="margin-top:0">✉️ Email (Gmail / SMTP)</h2>
+<p class="mute">Gmail: host smtp.gmail.com, port 587, use an App Password.</p>
+<label>SMTP host</label><input name="smtp_host" value="{{ s.smtp_host }}"><label>Port</label><input name="smtp_port" type="number" value="{{ s.smtp_port }}">
+<label>Username</label><input name="smtp_user" value="{{ s.smtp_user }}" autocomplete="off"><label>Password / App Password</label>{{ sec('smtp_password') }}
+<label>From address</label><input name="smtp_from" type="email" value="{{ s.smtp_from }}"></div>
+<div class="card"><h2 style="margin-top:0">💬 SMS</h2>
+<label>Provider</label><select name="sms_provider"><option value="" {{ 'selected' if not s.sms_provider }}>Off</option><option value="twilio" {{ 'selected' if s.sms_provider=='twilio' }}>Twilio</option><option value="msg91" {{ 'selected' if s.sms_provider=='msg91' }}>MSG91</option></select>
+<label>Twilio Account SID</label><input name="twilio_sid" value="{{ s.twilio_sid }}" autocomplete="off"><label>Twilio Auth Token</label>{{ sec('twilio_token') }}
+<label>Twilio sender (number or sender ID)</label><input name="twilio_from" value="{{ s.twilio_from }}">
+<details style="margin-top:10px"><summary class="mute">MSG91 (optional)</summary><label>Auth key</label>{{ sec('msg91_authkey') }}<label>Template ID</label><input name="msg91_template_id" value="{{ s.msg91_template_id }}"></details></div>
+<details class="card"><summary><b>💚 WhatsApp</b> <span class="mute">(planned — not active yet)</span></summary>
+<label>Access token</label>{{ sec('wa_token') }}<label>Phone number ID</label><input name="wa_phone_id" value="{{ s.wa_phone_id }}">
+<label>Template name</label><input name="wa_template" value="{{ s.wa_template }}"><label>Language</label><input name="wa_lang" value="{{ s.wa_lang }}"></details>
+<p><button class="btn" style="width:100%">Save settings</button></p></form>
+<h2>Send a test</h2><div class="grid" style="grid-template-columns:1fr">
+<form class="card" method="post" action="/settings/test"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="channel" value="email">
+<label>Test email to</label><input name="to" type="email" required><p><button class="btn ghost sm">Send test email</button></p></form>
+<form class="card" method="post" action="/settings/test"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="channel" value="sms">
+<label>Test SMS to (mobile)</label><input name="to" type="tel" required><p><button class="btn ghost sm">Send test SMS</button></p></form></div>
+<p class="mute">Passwords and tokens are stored encrypted and never shown again. Changing <code>SECRET_KEY</code> in .env makes saved secrets unreadable — re-enter them.</p>
+{% endblock %}

@@ -25,6 +25,11 @@ Log in with `ADMIN_EMAIL` / `ADMIN_PASSWORD` (created on first start), add distr
 Docker: `docker build -t marg-reminder . && docker run -p 8000:8000 -v mrdata:/data --env-file .env marg-reminder`.
 Run **one worker** (it hosts the scheduler). Put it behind HTTPS and set `COOKIE_SECURE=true`.
 
+## Super Admin settings (no .env editing needed)
+Log in as the admin → **Settings**: set Gmail/SMTP, Twilio (or MSG91) SMS, the reminder days and daily send hour, and
+send test email/SMS from the page. Values apply instantly (no restart), secrets are stored encrypted in the database,
+and `.env` values are only the starting defaults.
+
 ## Fully automatic
 Nobody has to press anything. After `REMINDER_HOUR` every day the app finds due subscriptions and sends the buyer and
 distributor reminders, retries failures hourly (3 times), catches up after downtime, and emails `ADMIN_EMAIL` if a run

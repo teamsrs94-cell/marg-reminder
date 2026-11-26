@@ -5,7 +5,7 @@
 <link rel="stylesheet" href="/static/style.css"></head><body>
 {% if user %}
 <header class="top"><span class="logo">🔔 Marg Reminder</span>
-<a href="/account" class="mute">{{ user.name }}</a>
+<a href="/account" class="mute">{{ user.name }}{% if user.is_admin %} (Super Admin){% endif %}</a>
 <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn ghost sm">Logout</button></form></header>
 {% set p = request.url.path %}
 <nav class="main">
@@ -14,6 +14,7 @@
 <a href="/customers" class="{{ 'on' if p.startswith('/customers') }}"><b>👥</b>Customers</a>
 <a href="/reminders" class="{{ 'on' if p.startswith('/reminders') }}"><b>✉️</b>Reminders</a>
 {% if user.is_admin %}<a href="/distributors" class="{{ 'on' if p.startswith('/distributors') }}"><b>🏢</b>Distributors</a>{% endif %}
+{% if user.is_admin %}<a href="/settings" class="{{ 'on' if p.startswith('/settings') }}"><b>⚙️</b>Settings</a>{% endif %}
 <a href="/import" class="{{ 'on' if p.startswith('/import') }}"><b>⬆️</b>Import</a>
 </nav>
 {% endif %}
