@@ -38,9 +38,9 @@ fails. Docker `restart: unless-stopped` + healthcheck keep it alive; the Reminde
 ## Deploy next to Enquira (VPS with Docker + nginx)
 ```bash
 git clone https://github.com/teamsrs94-cell/marg-reminder /opt/marg-reminder && cd /opt/marg-reminder
-bash deploy/install.sh renewals.srs-engineering.in you@example.com   # 1st run creates .env; edit it, run again
+bash deploy/install.sh reminder.srs-engineering.in you@example.com   # 1st run creates .env; edit it, run again
 ```
-Add a DNS `A` record for the subdomain first. Runs on port 3200 (Enquira keeps 3100). Update later: `bash deploy/update.sh`.
+Add a DNS `A` record for `reminder` first. Runs on port 3200 (Enquira keeps 3100). Update later: `bash deploy/update.sh`.
 
 ## Channels (configure in `.env`; unconfigured channels are skipped)
 | Channel | Provider | Notes |

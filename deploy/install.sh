@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # One-time install on the VPS that already runs Enquira (Docker + nginx). Run as root from the repo folder:
-#   bash deploy/install.sh renewals.srs-engineering.in you@example.com
+#   bash deploy/install.sh reminder.srs-engineering.in you@example.com
 set -euo pipefail
 DOMAIN="${1:?usage: install.sh <domain> <certbot-email>}"; CERT_EMAIL="${2:?usage: install.sh <domain> <certbot-email>}"
 PORT="${APP_PORT:-3200}"
