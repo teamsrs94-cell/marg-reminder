@@ -25,6 +25,18 @@ Log in with `ADMIN_EMAIL` / `ADMIN_PASSWORD` (created on first start), add distr
 Docker: `docker build -t marg-reminder . && docker run -p 8000:8000 -v mrdata:/data --env-file .env marg-reminder`.
 Run **one worker** (it hosts the scheduler). Put it behind HTTPS and set `COOKIE_SECURE=true`.
 
+## Fully automatic
+Nobody has to press anything. After `REMINDER_HOUR` every day the app finds due subscriptions and sends the buyer and
+distributor reminders, retries failures hourly (3 times), catches up after downtime, and emails `ADMIN_EMAIL` if a run
+fails. Docker `restart: unless-stopped` + healthcheck keep it alive; the Reminders page (admin) shows every run.
+
+## Deploy next to Enquira (VPS with Docker + nginx)
+```bash
+git clone https://github.com/teamsrs94-cell/marg-reminder /opt/marg-reminder && cd /opt/marg-reminder
+bash deploy/install.sh renewals.srs-engineering.in you@example.com   # 1st run creates .env; edit it, run again
+```
+Add a DNS `A` record for the subdomain first. Runs on port 3200 (Enquira keeps 3100). Update later: `bash deploy/update.sh`.
+
 ## Channels (configure in `.env`; unconfigured channels are skipped)
 | Channel | Provider | Notes |
 |---|---|---|

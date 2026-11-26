@@ -12,10 +12,10 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from .config import Settings
 from .db import make_engine, make_session_factory
-from .models import User
+from .models import RunLog, User
 from .security import LoginLimiter, hash_password
 from .services.notify import Notifier
-from .services.reminders import run_reminders
+from .services.reminders import RunSummary, run_reminders
 
 log = logging.getLogger("marg")
 BASE = Path(__file__).parent
@@ -30,26 +30,58 @@ def bootstrap_admin(Session, settings: Settings):
             log.warning("Created admin user %s", settings.admin_email)
 
 
-def run_daily(app: FastAPI) -> str:
+def alert_admin(app: FastAPI, subject: str, text: str):
+    s: Settings = app.state.settings
+    if s.admin_email and app.state.notifier.configured("email"):
+        try:
+            app.state.notifier.send("email", s.admin_email, text, [], subject)
+        except Exception:
+            log.exception("Could not send admin alert")
+
+
+def run_daily(app: FastAPI, trigger: str = "auto") -> RunSummary:
+    """Run all due reminders, record the run, and email the admin if anything failed."""
     s: Settings = app.state.settings
     today = datetime.now(ZoneInfo(s.timezone)).date()
     with app.state.Session() as db:
-        return run_reminders(db, s, app.state.notifier, today).as_text()
+        try:
+            r = run_reminders(db, s, app.state.notifier, today)
+            db.add(RunLog(trigger=trigger, due=r.subscriptions, sent=r.sent, failed=r.failed, summary=r.as_text()))
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            db.add(RunLog(trigger=trigger, error=f"{type(e).__name__}: {e}"[:500], summary="Run crashed"))
+            db.commit()
+            alert_admin(app, "Marg Reminder: run crashed", f"The reminder run crashed: {e}")
+            raise
+    if r.failed:
+        alert_admin(app, f"Marg Reminder: {r.failed} reminder(s) failed",
+                    f"{r.as_text()}\nOpen the Reminders page for details. Failed sends are retried automatically.")
+    return r
 
 
 async def scheduler(app: FastAPI):
-    """Check every 10 min; run once per day after REMINDER_HOUR. Re-running is safe (dedupe in DB)."""
+    """Fully automatic. Ticks every 5 min; runs once a day after REMINDER_HOUR, then retries
+    any failures hourly (max 3 extra tries). Re-running is safe: every reminder is de-duplicated in the DB."""
     s: Settings = app.state.settings
-    last = None
+    last_date, last_at, retries, last_failed = None, None, 0, False
     while True:
         now = datetime.now(ZoneInfo(s.timezone))
-        if now.hour >= s.reminder_hour and last != now.date():
+        due = now.hour >= s.reminder_hour and (
+            last_date != now.date()
+            or (last_failed and retries < 3 and last_at and (now - last_at).total_seconds() >= 3600)
+        )
+        if due:
+            retries = retries + 1 if last_date == now.date() else 0
             try:
-                log.info("Reminder run: %s", await asyncio.to_thread(run_daily, app))
-                last = now.date()
+                r = await asyncio.to_thread(run_daily, app)
+                log.info("Reminder run: %s", r.as_text())
+                last_failed = r.failed > 0
             except Exception:
                 log.exception("Reminder run failed; will retry")
-        await asyncio.sleep(600)
+                last_failed = True
+            last_date, last_at = now.date(), now
+        await asyncio.sleep(300)
 
 
 def create_app(settings: Settings | None = None, notifier: Notifier | None = None) -> FastAPI:

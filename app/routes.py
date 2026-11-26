@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
-from .models import Customer, ReminderLog, Subscription, User
+from .models import Customer, ReminderLog, RunLog, Subscription, User
 from .security import hash_password, new_csrf, verify_password
 from .services import importer
 from .services.util import add_one_year, fmt_date, normalize_phone, parse_date, valid_email
@@ -103,6 +103,12 @@ templates.env.globals["status_of"] = status_of
 
 
 # ---------------------------------------------------------------- auth
+@router.get("/health")
+def health(db: Session = Depends(get_db)):
+    db.execute(select(1))
+    return {"ok": True}
+
+
 @router.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     return render(request, "login.html")
@@ -385,15 +391,16 @@ def reminder_log(request: Request, page: int = 1, user: User = Depends(current_u
     s = request.app.state.settings
     n = request.app.state.notifier
     channels = {c: n.configured(c) for c in ("whatsapp", "sms", "email")}
+    runs = db.scalars(select(RunLog).order_by(RunLog.id.desc()).limit(5)).all() if user.is_admin else []
     return render(request, "reminders.html", user, rows=rows, page=page, pages=max(1, -(-total // PAGE)),
-                  channels=channels, schedule=s.reminder_days, hour=s.reminder_hour)
+                  channels=channels, schedule=s.reminder_days, hour=s.reminder_hour, runs=runs)
 
 
 @router.post("/reminders/run", dependencies=[Depends(csrf)])
 def reminders_run(request: Request, user: User = Depends(admin_only)):
     from .main import run_daily
 
-    flash(request, "Run complete: " + run_daily(request.app))
+    flash(request, "Run complete: " + run_daily(request.app, "manual").as_text())
     return go("/reminders")
 
 

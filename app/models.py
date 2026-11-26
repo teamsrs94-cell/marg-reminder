@@ -81,3 +81,17 @@ class ReminderLog(Base):
     subscription: Mapped[Subscription] = relationship(back_populates="logs")
 
     __table_args__ = (Index("ix_log_dedupe", "subscription_id", "expiry_date", "stage", "recipient", "channel"),)
+
+
+class RunLog(Base):
+    """One row per automatic reminder run, so the owner can see the automation is alive."""
+
+    __tablename__ = "run_logs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+    trigger: Mapped[str] = mapped_column(String(10), default="auto")  # auto | manual
+    due: Mapped[int] = mapped_column(Integer, default=0)
+    sent: Mapped[int] = mapped_column(Integer, default=0)
+    failed: Mapped[int] = mapped_column(Integer, default=0)
+    summary: Mapped[str] = mapped_column(Text, default="")
+    error: Mapped[str] = mapped_column(Text, default="")

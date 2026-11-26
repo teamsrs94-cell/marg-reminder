@@ -1,0 +1,25 @@
+# Marg Reminder. Start with:  docker compose up -d --build
+services:
+  marg-reminder:
+    build: .
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    env_file: .env
+    environment:
+      DATABASE_URL: sqlite:////data/marg_reminder.db
+      TZ: Asia/Kolkata
+    volumes:
+      - margdata:/data
+    # Only reachable from the server itself; nginx forwards public traffic here (Enquira uses 3100).
+    ports:
+      - "127.0.0.1:${APP_PORT:-3200}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+volumes:
+  margdata:

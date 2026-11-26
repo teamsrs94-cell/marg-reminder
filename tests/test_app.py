@@ -164,3 +164,19 @@ def test_renew_and_import(env):
     with app.state.Session() as db:
         sub = db.scalar(select(Subscription).where(Subscription.license_no == "L1"))
         assert sub.expiry_date == date(2027, 3, 31) and float(sub.amount) == 12000
+
+
+def test_run_daily_logs_and_alerts_admin(env):
+    from app.main import run_daily
+    from app.models import RunLog
+
+    app, c, _, s = env
+    assert c.get("/health").json() == {"ok": True}
+    seed(app, 1, today=date.today())
+    app.state.notifier = FakeNotifier(s, fail=("sms",))
+    r = run_daily(app)
+    assert r.failed >= 1
+    with app.state.Session() as db:
+        row = db.scalar(select(RunLog))
+        assert row.failed == r.failed and row.trigger == "auto"
+    assert any(to == "admin@x.com" and "failed" in t for _, to, t in app.state.notifier.sent)
