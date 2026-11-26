@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% import "macros.html" as m %}{% block title %}Renewals{% endblock %}
+{% block body %}<h1>Renewals <span class="mute">({{ total }})</span></h1>
+<form class="filters" method="get"><input name="q" value="{{ q }}" placeholder="Search customer, phone, licence, city" type="search">
+<select name="status" onchange="this.form.submit()"><option value="">All</option>
+{% for v,l in [('expired','Expired'),('soon','Next 30 days'),('active','Active')] %}<option value="{{ v }}" {{ 'selected' if status==v }}>{{ l }}</option>{% endfor %}</select>
+<button class="btn">Search</button></form>
+<div class="card list">{% for s in rows %}
+<div class="item"><div class="row between"><a class="t" href="/customers/{{ s.customer_id }}">{{ s.customer.name }}</a>{{ m.badge(s.expiry_date, t) }}</div>
+<div class="s">{{ s.product }}{% if s.license_no %} · {{ s.license_no }}{% endif %} · expires {{ s.expiry_date|dmy }}</div>
+<div class="row" style="margin-top:8px">{{ m.renew(s, csrf) }}<a class="btn ghost sm" href="/subscriptions/{{ s.id }}/edit">Edit</a></div></div>
+{% else %}<div class="item mute">No subscriptions found.</div>{% endfor %}</div>
+{{ m.pager(page, pages, '&q=' ~ (q|urlencode) ~ '&status=' ~ status) }}{% endblock %}

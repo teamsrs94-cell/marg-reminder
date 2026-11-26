@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% block title %}Login · Marg Reminder{% endblock %}
+{% block body %}<div class="login card"><h1>🔔 Marg Reminder</h1><p class="mute">Distributor login</p>
+{% if error %}<div class="err">{{ error }}</div>{% endif %}
+<form method="post" action="/login"><input type="hidden" name="csrf" value="{{ csrf }}">
+<label>Email</label><input name="email" type="email" required autocomplete="username" autofocus>
+<label>Password</label><input name="password" type="password" required autocomplete="current-password">
+<p><button class="btn" style="width:100%">Login</button></p></form></div>{% endblock %}

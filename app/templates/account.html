@@ -1,0 +1,9 @@
+{% extends "base.html" %}{% import "macros.html" as m %}{% block title %}Account{% endblock %}
+{% block body %}<h1>My account</h1>{{ m.err(error) }}
+<form class="card" method="post"><input type="hidden" name="csrf" value="{{ csrf }}">
+<label>Name</label><input name="name" required value="{{ user.name }}"><label>Company</label><input name="company" value="{{ user.company }}">
+<label>Mobile — receives your daily renewal digest</label><input name="phone" type="tel" inputmode="tel" value="{{ user.phone }}">
+<div class="mute" style="margin-top:6px">Digest email goes to {{ user.email }}</div>
+<h2>Change password</h2><label>Current password</label><input name="current_password" type="password" autocomplete="current-password">
+<label>New password</label><input name="new_password" type="password" minlength="8" autocomplete="new-password">
+<p><button class="btn">Save</button></p></form>{% endblock %}

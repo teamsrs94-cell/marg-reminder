@@ -1,0 +1,11 @@
+{% extends "base.html" %}{% import "macros.html" as m %}{% block title %}Import{% endblock %}
+{% block body %}<h1>Import from Excel / CSV</h1>{{ m.err(error) }}
+<div class="card"><p>Upload a <b>.csv</b> or <b>.xlsx</b> with these column headings:</p><p class="mute">{{ columns|join(', ') }}</p>
+<p class="mute">Re-importing the same <code>license_no</code> for a customer updates the expiry date instead of duplicating.
+{% if not user.is_admin %}<code>distributor_email</code> is ignored — rows go to your account.{% endif %}</p>
+<p><a href="/import/sample.csv">Download sample CSV</a></p>
+<form method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="{{ csrf }}">
+<input type="file" name="file" accept=".csv,.xlsx" required><p><button class="btn">Import</button></p></form></div>
+{% if result %}<div class="card"><h2 style="margin-top:0">Result</h2>
+<p>✅ {{ result.created_customers }} customers added · {{ result.created_subscriptions }} subscriptions added · {{ result.updated_subscriptions }} updated</p>
+{% if result.errors %}<div class="err"><b>{{ result.errors|length }} issue(s):</b><br>{% for e in result.errors[:30] %}{{ e }}<br>{% endfor %}</div>{% endif %}</div>{% endif %}{% endblock %}

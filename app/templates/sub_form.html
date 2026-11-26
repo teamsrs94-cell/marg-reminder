@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% import "macros.html" as m %}{% block title %}Subscription{% endblock %}
+{% block body %}<h1>{{ 'Edit' if s else 'New' }} subscription</h1><p class="mute">{{ c.name }}</p>{{ m.err(error) }}
+<form class="card" method="post"><input type="hidden" name="csrf" value="{{ csrf }}">
+<label>Marg product / edition</label><input name="product" value="{{ s.product if s else 'Marg ERP' }}" list="prods">
+<datalist id="prods"><option>Marg ERP 9+ Basic</option><option>Marg ERP 9+ Silver</option><option>Marg ERP 9+ Gold</option><option>Marg ERP 9+ Platinum</option><option>Marg Annual Service Contract</option></datalist>
+<label>Licence / serial no.</label><input name="license_no" value="{{ s.license_no if s else '' }}">
+<label>Start date</label><input name="start_date" type="date" value="{{ s.start_date.isoformat() if s and s.start_date else '' }}">
+<label>Expiry date *</label><input name="expiry_date" type="date" required value="{{ s.expiry_date.isoformat() if s else '' }}">
+<label>Amount (₹)</label><input name="amount" inputmode="decimal" value="{{ s.amount if s and s.amount else '' }}">
+<label>Notes</label><textarea name="notes" rows="2">{{ s.notes if s else '' }}</textarea>
+<p class="row"><button class="btn">Save</button><a class="btn ghost" href="/customers/{{ c.id }}">Cancel</a></p></form>
+{% if s %}<form method="post" action="/subscriptions/{{ s.id }}/delete" onsubmit="return confirm('Delete this subscription?')"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn danger sm">Delete subscription</button></form>{% endif %}{% endblock %}

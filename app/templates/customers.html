@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% import "macros.html" as m %}{% block title %}Customers{% endblock %}
+{% block body %}<div class="row between"><h1>Customers <span class="mute">({{ total }})</span></h1><a class="btn sm hide-m" href="/customers/new">+ Add</a></div>
+<form class="filters" method="get"><input name="q" value="{{ q }}" placeholder="Search name, phone, city" type="search"><button class="btn">Search</button></form>
+<div class="card list">{% for c in rows %}<a class="item" href="/customers/{{ c.id }}"><div class="t">{{ c.name }}</div>
+<div class="s">{{ c.contact_person }}{% if c.city %} · {{ c.city }}{% endif %}{% if c.phone %} · {{ c.phone }}{% endif %}</div></a>
+{% else %}<div class="item mute">No customers yet. <a href="/customers/new">Add one</a> or <a href="/import">import a file</a>.</div>{% endfor %}</div>
+{{ m.pager(page, pages, '&q=' ~ (q|urlencode)) }}<a class="btn fab" href="/customers/new">+ Customer</a>{% endblock %}

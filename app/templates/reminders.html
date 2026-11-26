@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% import "macros.html" as m %}{% block title %}Reminders{% endblock %}
+{% block body %}<h1>Reminders</h1>
+<div class="card"><div class="mute">Sent daily after {{ '%02d'|format(hour) }}:00 · days vs expiry: {{ schedule|join(', ') }}</div>
+<div class="row" style="margin-top:8px">{% for c,ok in channels.items() %}<span class="badge {{ 'active' if ok else 'expired' }}">{{ c }}: {{ 'ready' if ok else 'not set up' }}</span>{% endfor %}</div>
+{% if user.is_admin %}<form method="post" action="/reminders/run" style="margin-top:10px"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn sm">Run reminders now</button></form>{% endif %}</div>
+<div class="card list">{% for r in rows %}<div class="item"><div class="row between"><span class="t">{{ r.subscription.customer.name }}</span><span class="badge {{ r.status }}">{{ r.status }}</span></div>
+<div class="s">{{ r.recipient }} · {{ r.channel }} · {{ r.to_address }} · {{ r.created_at.strftime('%d-%m %H:%M') }}{% if r.status=='failed' %}<br>{{ r.detail }}{% endif %}</div></div>
+{% else %}<div class="item mute">No reminders sent yet.</div>{% endfor %}</div>{{ m.pager(page, pages) }}{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% import "macros.html" as m %}{% block title %}Customer{% endblock %}
+{% block body %}<h1>{{ 'Edit' if c else 'New' }} customer</h1>{{ m.err(error) }}
+{% set f = form if form is defined else {} %}
+<form class="card" method="post"><input type="hidden" name="csrf" value="{{ csrf }}">
+{% if user.is_admin and not c %}<label>Distributor</label><select name="distributor_id" required>
+{% for d in dists %}<option value="{{ d.id }}">{{ d.company or d.name }}</option>{% endfor %}</select>{% endif %}
+<label>Business / customer name *</label><input name="name" required value="{{ f.name or (c.name if c) or '' }}">
+<label>Contact person</label><input name="contact_person" value="{{ f.contact_person or (c.contact_person if c) or '' }}">
+<label>Mobile (WhatsApp / SMS)</label><input name="phone" type="tel" inputmode="tel" placeholder="98765 43210" value="{{ f.phone or (c.phone if c) or '' }}">
+<label>Email</label><input name="email" type="email" value="{{ f.email or (c.email if c) or '' }}">
+<label>City</label><input name="city" value="{{ f.city or (c.city if c) or '' }}">
+<label class="chk" style="margin-top:14px"><input type="checkbox" name="notify" value="1" {{ 'checked' if (not c) or c.notify }}>Send renewal reminders to this customer</label>
+<p class="row"><button class="btn">Save</button><a class="btn ghost" href="{{ '/customers/' ~ c.id if c else '/customers' }}">Cancel</a></p></form>{% endblock %}

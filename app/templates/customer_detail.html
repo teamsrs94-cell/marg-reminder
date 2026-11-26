@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% import "macros.html" as m %}{% block title %}{{ c.name }}{% endblock %}
+{% block body %}<h1>{{ c.name }}</h1>
+<div class="card"><div class="mute">{{ c.contact_person }}{% if c.city %} · {{ c.city }}{% endif %}</div>
+{% if c.phone %}<div>📱 <a href="tel:+{{ c.phone }}">{{ c.phone }}</a></div>{% endif %}{% if c.email %}<div>✉️ {{ c.email }}</div>{% endif %}
+<div class="mute">Distributor: {{ c.distributor.company or c.distributor.name }} · Reminders {{ 'on' if c.notify else 'OFF' }}</div>
+<div class="row" style="margin-top:10px"><a class="btn ghost sm" href="/customers/{{ c.id }}/edit">Edit</a>
+<form method="post" action="/customers/{{ c.id }}/delete" onsubmit="return confirm('Delete this customer and all its subscriptions?')"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn danger sm">Delete</button></form></div></div>
+<div class="row between"><h2>Subscriptions</h2><a class="btn sm" href="/customers/{{ c.id }}/subscriptions/new">+ Add</a></div>
+<div class="card list">{% for s in subs %}<div class="item"><div class="row between"><span class="t">{{ s.product }}</span>{{ m.badge(s.expiry_date, t) }}</div>
+<div class="s">{% if s.license_no %}{{ s.license_no }} · {% endif %}{{ s.start_date|dmy }}{% if s.start_date %} → {% endif %}{{ s.expiry_date|dmy }}{% if s.amount %} · ₹{{ '%.0f'|format(s.amount) }}{% endif %}</div>
+<div class="row" style="margin-top:8px">{{ m.renew(s, csrf) }}<a class="btn ghost sm" href="/subscriptions/{{ s.id }}/edit">Edit</a></div></div>
+{% else %}<div class="item mute">No subscriptions yet.</div>{% endfor %}</div>{% endblock %}

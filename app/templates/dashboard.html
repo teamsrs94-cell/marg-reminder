@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% import "macros.html" as m %}
+{% block body %}<h1>Hello, {{ user.name }}</h1>
+<div class="grid">
+<a class="stat bad" href="/subscriptions?status=expired"><div class="n">{{ stats.expired }}</div><div class="l">Expired</div></a>
+<a class="stat warn" href="/subscriptions?status=soon"><div class="n">{{ stats.week }}</div><div class="l">Expiring in 7 days</div></a>
+<a class="stat warn" href="/subscriptions?status=soon"><div class="n">{{ stats.month }}</div><div class="l">Expiring in 30 days</div></a>
+<a class="stat ok" href="/subscriptions"><div class="n">{{ stats.active }}</div><div class="l">Active</div></a>
+<a class="stat" href="/customers"><div class="n">{{ stats.customers }}</div><div class="l">Customers</div></a></div>
+<h2>Needs attention</h2>
+{% if attention %}<div class="card list">{% for s in attention %}
+<div class="item"><div class="row between"><a class="t" href="/customers/{{ s.customer_id }}">{{ s.customer.name }}</a>{{ m.badge(s.expiry_date, t) }}</div>
+<div class="s">{{ s.product }} · {{ s.expiry_date|dmy }}{% if s.customer.phone %} · <a href="tel:+{{ s.customer.phone }}">{{ s.customer.phone }}</a>{% endif %}</div>
+<div class="row" style="margin-top:8px">{{ m.renew(s, csrf) }}
+{% if s.customer.phone %}<a class="btn ghost sm" href="https://wa.me/{{ s.customer.phone }}">WhatsApp</a>{% endif %}</div></div>{% endfor %}</div>
+{% else %}<div class="card mute">Nothing expiring in the next 30 days 🎉</div>{% endif %}
+<a class="btn fab" href="/customers/new">+ Customer</a>{% endblock %}

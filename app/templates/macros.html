@@ -1,0 +1,9 @@
+{% macro badge(exp, t) %}{% set st = status_of(exp, t) %}{% set d = (exp - t).days %}
+<span class="badge {{ st }}">{% if d < 0 %}expired {{ -d }}d ago{% elif d == 0 %}today{% else %}{{ d }}d left{% endif %}</span>{% endmacro %}
+{% macro err(e) %}{% if e %}<div class="err">{{ e }}</div>{% endif %}{% endmacro %}
+{% macro pager(page, pages, extra='') %}{% if pages > 1 %}<div class="pager">
+{% if page > 1 %}<a class="btn ghost sm" href="?page={{ page-1 }}{{ extra }}">← Prev</a>{% else %}<span></span>{% endif %}
+<span class="mute">Page {{ page }} / {{ pages }}</span>
+{% if page < pages %}<a class="btn ghost sm" href="?page={{ page+1 }}{{ extra }}">Next →</a>{% else %}<span></span>{% endif %}</div>{% endif %}{% endmacro %}
+{% macro renew(s, csrf) %}<form method="post" action="/subscriptions/{{ s.id }}/renew" style="display:inline" onsubmit="return confirm('Mark as renewed for 1 more year?')">
+<input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn sm">Renewed ✓</button></form>{% endmacro %}
