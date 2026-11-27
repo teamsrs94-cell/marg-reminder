@@ -1,0 +1,10 @@
+FROM python:3.12-slim
+WORKDIR /srv
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY app app
+ENV DATABASE_URL=sqlite:////data/marg_reminder.db
+VOLUME /data
+EXPOSE 8000
+# Single worker on purpose: it runs the daily reminder scheduler.
+CMD ["uvicorn", "app.main:app_factory", "--factory", "--host", "0.0.0.0", "--port", "8000"]

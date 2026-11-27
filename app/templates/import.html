@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% import "macros.html" as m %}{% block title %}Import{% endblock %}
+{% block body %}
+<div class="page-h"><div><h2>Import from Excel / CSV</h2><p>Add many customers and subscriptions at once.</p></div></div>{{ m.err(error) }}
+<div class="card" style="max-width:780px"><div class="card-b stack"><div><div class="eyebrow">Column headings</div><p class="muted" style="margin:4px 0 0">{{ columns|join(', ') }}</p></div>
+<p class="muted small" style="margin:0">Re-importing the same <code>license_no</code> for a customer updates its expiry date instead of duplicating it.
+{% if not user.is_admin %}<code>distributor_email</code> is ignored — rows go to your account.{% endif %}</p>
+<div><a class="btn" href="/import/sample.csv">Download sample CSV</a></div>
+<form method="post" enctype="multipart/form-data" class="stack"><input type="hidden" name="csrf" value="{{ csrf }}">
+<input class="in" type="file" name="file" accept=".csv,.xlsx" required><div><button class="btn p">Import file</button></div></form></div></div>
+{% if result %}<div class="card" style="max-width:780px"><div class="card-h"><h3>Result</h3></div><div class="card-b stack">
+<p style="margin:0">✅ {{ result.created_customers }} customers added · {{ result.created_subscriptions }} subscriptions added · {{ result.updated_subscriptions }} updated</p>
+{% if result.errors %}<div class="err"><b>{{ result.errors|length }} issue(s):</b><br>{% for e in result.errors[:30] %}{{ e }}<br>{% endfor %}</div>{% endif %}</div></div>{% endif %}{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% import "macros.html" as m %}{% block title %}{{ 'Edit subscription' if s else 'New subscription' }}{% endblock %}
+{% block body %}
+<div class="page-h"><div><h2>{{ 'Edit' if s else 'New' }} subscription</h2><p>{{ c.name }}</p></div></div>{{ m.err(error) }}
+<form class="card" method="post" style="max-width:720px"><div class="card-b stack"><input type="hidden" name="csrf" value="{{ csrf }}">
+<div class="field"><label>Marg product / edition</label><input class="in" name="product" value="{{ s.product if s else 'Marg ERP' }}" list="prods"></div>
+<datalist id="prods"><option>Marg ERP 9+ Basic</option><option>Marg ERP 9+ Silver</option><option>Marg ERP 9+ Gold</option><option>Marg ERP 9+ Platinum</option><option>Marg Annual Service Contract</option></datalist>
+{{ m.field('Licence / serial no.','license_no', s.license_no if s else '') }}
+<div class="grid2">{{ m.field('Start date','start_date', s.start_date.isoformat() if s and s.start_date else '', 'date') }}{{ m.field('Expiry date','expiry_date', s.expiry_date.isoformat() if s else '', 'date', required=True) }}</div>
+{{ m.field('Amount (₹)','amount', s.amount if s and s.amount else '', extra='inputmode="decimal"') }}
+<div class="field"><label>Notes</label><textarea class="in" name="notes" rows="2">{{ s.notes if s else '' }}</textarea></div>
+<div class="row"><button class="btn p">Save</button><a class="btn" href="/customers/{{ c.id }}">Cancel</a></div></div></form>
+{% if s %}<form method="post" action="/subscriptions/{{ s.id }}/delete" onsubmit="return confirm('Delete this subscription?')"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn r sm">Delete subscription</button></form>{% endif %}{% endblock %}

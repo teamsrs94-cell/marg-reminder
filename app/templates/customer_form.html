@@ -1,0 +1,11 @@
+{% extends "base.html" %}{% import "macros.html" as m %}{% block title %}{{ 'Edit customer' if c else 'New customer' }}{% endblock %}
+{% block body %}
+<div class="page-h"><div><h2>{{ 'Edit' if c else 'New' }} customer</h2><p>The mobile number and email are where reminders are sent.</p></div></div>{{ m.err(error) }}
+{% set f = form if form is defined else {} %}
+<form class="card" method="post" style="max-width:720px"><div class="card-b stack"><input type="hidden" name="csrf" value="{{ csrf }}">
+{% if user.is_admin and not c %}<div class="field"><label>Distributor *</label><select class="in" name="distributor_id" required>{% for d in dists %}<option value="{{ d.id }}">{{ d.company or d.name }}</option>{% endfor %}</select></div>{% endif %}
+{{ m.field('Business / customer name','name', f.name or (c.name if c) or '', required=True) }}
+<div class="grid2">{{ m.field('Contact person','contact_person', f.contact_person or (c.contact_person if c) or '') }}{{ m.field('City','city', f.city or (c.city if c) or '') }}</div>
+<div class="grid2">{{ m.field('Mobile (SMS / WhatsApp)','phone', f.phone or (c.phone if c) or '', 'tel', extra='inputmode="tel" placeholder="98765 43210"') }}{{ m.field('Email','email', f.email or (c.email if c) or '', 'email') }}</div>
+<label class="chk"><input type="checkbox" name="notify" value="1" {{ 'checked' if (not c) or c.notify }}>Send renewal reminders to this customer</label>
+<div class="row"><button class="btn p">Save</button><a class="btn" href="{{ '/customers/' ~ c.id if c else '/customers' }}">Cancel</a></div></div></form>{% endblock %}

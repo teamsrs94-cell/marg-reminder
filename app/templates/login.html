@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% import "macros.html" as m %}{% block title %}Login · Marg Reminder{% endblock %}
+{% block bare %}<div class="login">
+{% include "_auth_left.html" %}
+<div class="login-r"><form class="login-card" method="post" action="/login"><input type="hidden" name="csrf" value="{{ csrf }}">
+<h2>Welcome back</h2><p class="lg-sub">Sign in to your distributor account</p>
+{% if flash %}<div class="flash">{{ flash }}</div>{% endif %}{% if error %}<div class="err">{{ error }}</div>{% endif %}
+<div class="field"><label>Email</label><input class="in" name="email" type="email" required autocomplete="username" autofocus></div>
+<div class="field"><label>Password</label><input class="in" name="password" type="password" required autocomplete="current-password"></div>
+<button class="btn p block">Sign in</button>
+<div style="text-align:center"><a href="/forgot" class="small">Forgot password?</a></div></form></div></div>{% endblock %}

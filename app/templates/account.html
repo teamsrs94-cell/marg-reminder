@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% import "macros.html" as m %}{% block title %}My account{% endblock %}
+{% block body %}
+<div class="page-h"><div><h2>My account</h2><p>Your details, and how your customers' reminders are sent.</p></div></div>{{ m.err(error) }}
+<form class="card" method="post" style="max-width:720px"><div class="card-h"><h3>Profile</h3></div><div class="card-b stack"><input type="hidden" name="csrf" value="{{ csrf }}">
+<div class="grid2">{{ m.field('Name','name', user.name, required=True) }}{{ m.field('Company','company', user.company) }}</div>
+{{ m.field('Mobile — receives your daily renewal summary','phone', user.phone, 'tel', extra='inputmode="tel"') }}
+{{ m.field('Login email — password reset links and your summary go here','email', user.email, 'email', required=True) }}
+<div class="muted small">To change your login email, also type your current password below.</div>
+<div><div class="eyebrow" style="margin-bottom:8px">Change password</div><div class="grid2">
+<div class="field"><label>Current password</label><input class="in" name="current_password" type="password" autocomplete="current-password"></div>
+<div class="field"><label>New password</label><input class="in" name="new_password" type="password" minlength="8" autocomplete="new-password"></div></div></div>
+<div><button class="btn p">Save</button></div></div></form>
+{% if not user.is_admin %}
+<form class="card" method="post" action="/account/sender" style="max-width:720px"><div class="card-h"><h3>Send my customers' reminders from my own accounts</h3><span class="muted small">Optional</span></div><div class="card-b stack"><input type="hidden" name="csrf" value="{{ csrf }}">
+<p class="muted small" style="margin:0">Your customers get their reminder <b>from you</b>. By default it is sent through {{ brand }} with your name, and replies come to you. Add your own Gmail / Twilio below and it will be sent from them instead. If your account ever fails, the default sender is used automatically. <b>You</b> always get your daily summary from {{ brand }}.</p>
+<div class="eyebrow">Your Gmail / SMTP <span style="text-transform:none;letter-spacing:0;font-weight:400">(Gmail: smtp.gmail.com, 587, App Password)</span></div>
+<div class="grid2">{{ m.field('SMTP host','smtp_host', ds.smtp_host or '') }}{{ m.field('Port','smtp_port', ds.smtp_port or 587, 'number') }}</div>
+<div class="grid2">{{ m.field('Username','smtp_user', ds.smtp_user or '', extra='autocomplete="off"') }}<div class="field"><label>Password / App Password</label><input class="in" name="smtp_password" type="password" autocomplete="new-password" placeholder="{{ '•••••• saved — leave blank to keep' if ds_secret.smtp_password else 'not set' }}"></div></div>
+{{ m.field('From address','smtp_from', ds.smtp_from or '', 'email') }}
+<div class="eyebrow">Your Twilio</div>
+<div class="grid2">{{ m.field('Account SID','twilio_sid', ds.twilio_sid or '', extra='autocomplete="off"') }}<div class="field"><label>Auth Token</label><input class="in" name="twilio_token" type="password" autocomplete="new-password" placeholder="{{ '•••••• saved — leave blank to keep' if ds_secret.twilio_token else 'not set' }}"></div></div>
+{{ m.field('Sender number','twilio_from', ds.twilio_from or '') }}
+<div class="row"><button class="btn p">Save sender</button><button class="btn" name="clear" value="1" onclick="return confirm('Remove your own sender?')">Remove my sender</button></div></div></form>
+<div class="card" style="max-width:720px"><div class="card-h"><h3>Test my sender</h3></div><div class="card-b stack">
+<form method="post" action="/account/sender/test" class="row"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="channel" value="email"><input class="in" style="flex:1 1 220px;width:auto" name="to" type="email" placeholder="Test email to…" required><button class="btn">Test email</button></form>
+<form method="post" action="/account/sender/test" class="row"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="channel" value="sms"><input class="in" style="flex:1 1 220px;width:auto" name="to" type="tel" placeholder="Test SMS to…" required><button class="btn">Test SMS</button></form></div></div>
+{% endif %}{% endblock %}

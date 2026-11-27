@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% import "macros.html" as m %}{% block title %}Distributors{% endblock %}
+{% block body %}
+<div class="page-h"><div><h2>Distributors</h2><p>Each distributor logs in and manages only their own customers.</p></div></div>{{ m.err(error) }}
+<div class="card">{% if rows %}<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Distributor</th><th>Login email</th><th>Mobile</th><th>Customers</th><th>Status</th><th></th></tr></thead><tbody>
+{% for d in rows %}<tr><td class="first" data-l=""><b>{{ d.company or d.name }}</b><div class="muted small">{{ d.name }}</div></td><td data-l="Email">{{ d.email }}</td><td data-l="Mobile" class="num">{{ d.phone or '—' }}</td>
+<td data-l="Customers" class="num">{{ counts.get(d.id, 0) }}</td><td data-l="Status"><span class="pill {{ 'active' if d.active else 'expired' }}">{{ 'active' if d.active else 'disabled' }}</span></td>
+<td class="actions" data-l=""><div class="row"><form method="post" action="/distributors/{{ d.id }}/toggle"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn sm">{{ 'Disable' if d.active else 'Enable' }}</button></form>
+<details><summary class="btn sm" style="display:inline-flex">Reset password</summary><form method="post" action="/distributors/{{ d.id }}/password" class="row" style="margin-top:8px;flex-wrap:nowrap"><input type="hidden" name="csrf" value="{{ csrf }}"><input class="in" style="width:170px;min-height:34px" name="password" type="password" minlength="8" placeholder="New password" required autocomplete="new-password"><button class="btn sm p">Set</button></form></details></div></td></tr>{% endfor %}</tbody></table></div>
+{% else %}<div class="empty">No distributors yet.</div>{% endif %}</div>
+<form class="card" method="post" style="max-width:720px"><div class="card-h"><h3>Add distributor</h3></div><div class="card-b stack"><input type="hidden" name="csrf" value="{{ csrf }}">
+<div class="grid2">{{ m.field('Contact name','name', required=True) }}{{ m.field('Company','company') }}</div>
+<div class="grid2">{{ m.field('Email (login)','email', type='email', required=True) }}{{ m.field('Mobile (gets reminder digests)','phone', type='tel', extra='inputmode="tel"') }}</div>
+{{ m.field('Initial password (min 8)','password', type='password', required=True, extra='minlength="8" autocomplete="new-password"') }}
+<div><button class="btn p">Create distributor</button></div></div></form>{% endblock %}

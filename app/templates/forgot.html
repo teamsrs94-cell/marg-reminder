@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% import "macros.html" as m %}{% block title %}Forgot password · Marg Reminder{% endblock %}
+{% block bare %}<div class="login">{% include "_auth_left.html" %}
+<div class="login-r"><form class="login-card" method="post" action="/forgot"><input type="hidden" name="csrf" value="{{ csrf }}">
+<h2>Forgot your password?</h2>
+{% if sent %}<div class="flash"><b>Check your inbox.</b><br>If {{ email or 'that address' }} has an account with us, a link to set a new password is on its way. It can take a few minutes to arrive, and the link is valid for 1 hour.</div>
+<p class="lg-sub" style="margin:0">Nothing in your inbox or spam folder? Ask your administrator to reset it for you.</p>
+<a class="btn block" href="/login">Back to sign in</a>
+{% else %}<p class="lg-sub">Type the email you sign in with. We will send you a link to choose a new password.</p>
+{% if error %}<div class="err">{{ error }}</div>{% endif %}
+<div class="field"><label>Email</label><input class="in" name="email" type="email" required autocomplete="username" autofocus></div>
+<button class="btn p block">Email me a reset link</button>
+<div style="text-align:center"><a href="/login" class="small">Back to sign in</a></div>{% endif %}</form></div></div>{% endblock %}

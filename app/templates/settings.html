@@ -1,0 +1,31 @@
+{% extends "base.html" %}{% import "macros.html" as m %}{% block title %}Settings{% endblock %}
+{% macro sec(name) %}<input class="in" name="{{ name }}" type="password" autocomplete="new-password" placeholder="{{ '•••••• saved — leave blank to keep' if secrets_set[name] else 'not set' }}">{% endmacro %}
+{% block body %}
+<div class="page-h"><div><h2>Settings</h2><p>Sender accounts and schedule for the whole platform. Changes apply immediately.</p></div></div>{{ m.err(error) }}
+{% if mail_error %}<div class="err"><b>Last email problem:</b> {{ mail_error }}<br><span class="small">Check the Gmail details below and use "Send test email".</span></div>{% endif %}
+<div class="row">{% for c,ok in ready.items() %}<span class="pill {{ 'ready' if ok else 'off' }}">{{ c }}: {{ 'ready' if ok else 'not set up' }}</span>{% endfor %}</div>
+<form method="post" class="stack" style="max-width:760px"><input type="hidden" name="csrf" value="{{ csrf }}">
+<div class="card"><div class="card-h"><h3>Default sender</h3></div><div class="card-b stack">
+<p class="muted small" style="margin:0">Each distributor's own daily summary always comes from this default sender. Buyers get theirs from the distributor: through the distributor's own Gmail/Twilio if they added one, otherwise from this default sender shown as "Distributor via {{ s.brand_name }}", with replies going to the distributor.</p>
+{{ m.field('Brand / sender name (e.g. SRS Engineering)','brand_name', s.brand_name) }}
+{{ m.field('Public web address (used in password-reset emails)','app_url', s.app_url, extra='placeholder="https://reminder.srs-engineering.in"') }}</div></div>
+<div class="card"><div class="card-h"><h3>Automatic schedule</h3></div><div class="card-b stack">
+{{ m.field('Reminder days (relative to expiry; negative = after expiry)','reminder_days', days, extra='placeholder="30,15,7,1,0,-7"') }}
+<div class="grid2">{{ m.field('Send daily after (hour 0–23, ' ~ s.timezone ~ ')','reminder_hour', s.reminder_hour, 'number', extra='min="0" max="23"') }}{{ m.field('Default country code','country_code', s.country_code) }}</div></div></div>
+<div class="card"><div class="card-h"><h3>Email (Gmail / SMTP)</h3></div><div class="card-b stack">
+<p class="muted small" style="margin:0">Gmail: host smtp.gmail.com, port 587, and an App Password.</p>
+<div class="grid2">{{ m.field('SMTP host','smtp_host', s.smtp_host) }}{{ m.field('Port','smtp_port', s.smtp_port, 'number') }}</div>
+<div class="grid2">{{ m.field('Username','smtp_user', s.smtp_user, extra='autocomplete="off"') }}<div class="field"><label>Password / App Password</label>{{ sec('smtp_password') }}</div></div>
+{{ m.field('From address','smtp_from', s.smtp_from, 'email') }}</div></div>
+<div class="card"><div class="card-h"><h3>SMS</h3></div><div class="card-b stack">
+<div class="field"><label>Provider</label><select class="in" name="sms_provider"><option value="" {{ 'selected' if not s.sms_provider }}>Off</option><option value="twilio" {{ 'selected' if s.sms_provider=='twilio' }}>Twilio</option><option value="msg91" {{ 'selected' if s.sms_provider=='msg91' }}>MSG91</option></select></div>
+<div class="grid2">{{ m.field('Twilio Account SID','twilio_sid', s.twilio_sid, extra='autocomplete="off"') }}<div class="field"><label>Twilio Auth Token</label>{{ sec('twilio_token') }}</div></div>
+{{ m.field('Twilio sender (number or sender ID)','twilio_from', s.twilio_from) }}
+<details><summary class="muted">MSG91 (optional)</summary><div class="stack" style="margin-top:12px"><div class="field"><label>Auth key</label>{{ sec('msg91_authkey') }}</div>{{ m.field('Template ID','msg91_template_id', s.msg91_template_id) }}</div></details></div></div>
+<details class="card"><summary class="card-h" style="padding:13px 16px">WhatsApp <span class="muted small" style="font-weight:400">&nbsp;(planned, not active yet)</span></summary><div class="card-b stack">
+<div class="field"><label>Access token</label>{{ sec('wa_token') }}</div>{{ m.field('Phone number ID','wa_phone_id', s.wa_phone_id) }}<div class="grid2">{{ m.field('Template name','wa_template', s.wa_template) }}{{ m.field('Language','wa_lang', s.wa_lang) }}</div></div></details>
+<div><button class="btn p block" style="max-width:320px">Save settings</button></div></form>
+<div class="card" style="max-width:760px"><div class="card-h"><h3>Send a test</h3></div><div class="card-b stack">
+<form method="post" action="/settings/test" class="row"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="channel" value="email"><input class="in" style="flex:1 1 220px;width:auto" name="to" type="email" placeholder="Test email to…" required><button class="btn">Send test email</button></form>
+<form method="post" action="/settings/test" class="row"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="channel" value="sms"><input class="in" style="flex:1 1 220px;width:auto" name="to" type="tel" placeholder="Test SMS to (mobile)…" required><button class="btn">Send test SMS</button></form></div></div>
+<p class="muted small">Passwords and tokens are stored encrypted and never shown again. Changing <code>SECRET_KEY</code> in .env makes saved secrets unreadable — re-enter them.</p>{% endblock %}
