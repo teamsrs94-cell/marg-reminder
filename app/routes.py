@@ -10,7 +10,9 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from .models import Customer, ReminderLog, RunLog, Subscription, User, UserSetting
-from .security import hash_password, new_csrf, verify_password
+from .security import (hash_password, make_reset_token, new_csrf, read_reset_token, reset_token_matches,
+                       verify_password)
+from .services.notify import NotConfigured
 from .services import appsettings, importer
 from .services.util import add_one_year, fmt_date, normalize_phone, parse_date, valid_email
 
@@ -127,6 +129,68 @@ def login(request: Request, email: str = Form(...), password: str = Form(...), d
     request.session.clear()
     request.session["uid"] = user.id
     return go("/")
+
+
+# ---------------------------------------------------------------- forgot / reset password
+@router.get("/forgot", response_class=HTMLResponse)
+def forgot_page(request: Request):
+    return render(request, "forgot.html", sent=False, error=None)
+
+
+@router.post("/forgot", dependencies=[Depends(csrf)])
+def forgot(request: Request, email: str = Form(...), db: Session = Depends(get_db)):
+    st, lim = request.app.state.settings, request.app.state.reset_limiter
+    key = request.client.host if request.client else "?"
+    if lim.blocked(key):
+        return render(request, "forgot.html", sent=False, error="Too many requests. Please try again in 15 minutes.")
+    lim.fail(key)  # every request counts, so this can't be used to spam inboxes
+    user = db.scalar(select(User).where(User.email == email.strip().lower()))
+    if user and user.active:
+        base = st.app_url or str(request.base_url).rstrip("/")
+        link = f"{base}/reset/{make_reset_token(st.secret_key, user.id, user.password_hash)}"
+        text = (f"Hello {user.name},\n\nUse this link to set a new password for Marg Reminder. "
+                f"It works once and expires in 1 hour:\n{link}\n\nIf you did not ask for this, ignore this email.")
+        try:
+            ok, detail = request.app.state.notifier.send("email", user.email, text, [], "Reset your Marg Reminder password",
+                                                         from_name=st.brand_name)
+            if not ok:
+                import logging
+                logging.getLogger("marg").warning("Password reset email failed: %s", detail)
+        except NotConfigured:
+            import logging
+            logging.getLogger("marg").warning("Password reset requested but email is not configured")
+    # same answer whether or not the email exists, so accounts can't be probed
+    return render(request, "forgot.html", sent=True, error=None)
+
+
+def _reset_user(request: Request, db: Session, token: str):
+    got = read_reset_token(request.app.state.settings.secret_key, token)
+    user = db.get(User, got[0]) if got else None
+    if not user or not user.active or not reset_token_matches(got[1], user.password_hash):
+        return None
+    return user
+
+
+@router.get("/reset/{token}", response_class=HTMLResponse)
+def reset_page(token: str, request: Request, db: Session = Depends(get_db)):
+    return render(request, "reset.html", token=token, valid=bool(_reset_user(request, db, token)), error=None)
+
+
+@router.post("/reset/{token}", dependencies=[Depends(csrf)])
+def reset_do(token: str, request: Request, password: str = Form(...), confirm: str = Form(...),
+             db: Session = Depends(get_db)):
+    user = _reset_user(request, db, token)
+    if not user:
+        return render(request, "reset.html", token=token, valid=False, error=None)
+    err = "Password must be at least 8 characters." if len(password) < 8 else (
+        "The two passwords do not match." if password != confirm else None)
+    if err:
+        return render(request, "reset.html", token=token, valid=True, error=err)
+    user.password_hash = hash_password(password)
+    db.commit()
+    request.session.clear()
+    flash(request, "Password updated. Please sign in with your new password.")
+    return go("/login")
 
 
 @router.post("/logout", dependencies=[Depends(csrf)])
@@ -434,6 +498,21 @@ def distributor_create(request: Request, name: str = Form(...), company: str = F
                 phone=normalize_phone(phone, cc), password_hash=hash_password(password)))
     db.commit()
     flash(request, "Distributor created.")
+    return go("/distributors")
+
+
+@router.post("/distributors/{uid}/password", dependencies=[Depends(csrf)])
+def distributor_password(uid: int, request: Request, password: str = Form(...), user: User = Depends(admin_only),
+                         db: Session = Depends(get_db)):
+    d = db.get(User, uid)
+    if not d or d.is_admin:
+        raise HTTPException(404)
+    if len(password) < 8:
+        flash(request, "Password must be at least 8 characters.")
+        return go("/distributors")
+    d.password_hash = hash_password(password)
+    db.commit()
+    flash(request, f"New password set for {d.company or d.name}. Share it with them securely.")
     return go("/distributors")
 
 

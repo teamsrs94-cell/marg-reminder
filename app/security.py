@@ -46,3 +46,30 @@ class LoginLimiter:
 
     def reset(self, key):
         self.fails.pop(key, None)
+
+
+# ---- password-reset links: signed, expire in 1 hour, and die as soon as the password changes
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+
+RESET_MAX_AGE = 3600
+
+
+def _fp(password_hash: str) -> str:
+    return hashlib.sha256(password_hash.encode()).hexdigest()[:16]
+
+
+def make_reset_token(secret_key: str, user_id: int, password_hash: str) -> str:
+    return URLSafeTimedSerializer(secret_key, salt="pw-reset").dumps({"u": user_id, "h": _fp(password_hash)})
+
+
+def read_reset_token(secret_key: str, token: str):
+    """Returns (user_id, fingerprint) or None if the link is invalid or older than 1 hour."""
+    try:
+        d = URLSafeTimedSerializer(secret_key, salt="pw-reset").loads(token, max_age=RESET_MAX_AGE)
+        return int(d["u"]), str(d["h"])
+    except (BadSignature, SignatureExpired, KeyError, ValueError, TypeError):
+        return None
+
+
+def reset_token_matches(fingerprint: str, password_hash: str) -> bool:
+    return hmac.compare_digest(fingerprint, _fp(password_hash))

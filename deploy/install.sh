@@ -8,6 +8,7 @@ cd "$(dirname "$0")/.."
 [ -f .env ] || { cp .env.example .env; sed -i "s#^SECRET_KEY=.*#SECRET_KEY=$(openssl rand -hex 32)#; s#^COOKIE_SECURE=.*#COOKIE_SECURE=true#" .env
   echo "Created .env — edit it now (ADMIN_*, SMTP_*, TWILIO_*) then re-run this script."; exit 0; }
 if ss -ltn | grep -q "127.0.0.1:${PORT} "; then docker compose ps | grep -q marg || { echo "Port ${PORT} is used by something else; set APP_PORT"; exit 1; }; fi
+grep -q "^APP_URL=" .env || echo "APP_URL=https://${DOMAIN}" >> .env
 APP_PORT="$PORT" docker compose up -d --build
 CONF="/etc/nginx/sites-available/${DOMAIN}.conf"; [ -d /etc/nginx/sites-available ] || CONF="/etc/nginx/conf.d/${DOMAIN}.conf"
 if [ ! -f "$CONF" ]; then

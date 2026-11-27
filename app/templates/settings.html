@@ -6,7 +6,8 @@
 <form method="post" class="stack" style="max-width:760px"><input type="hidden" name="csrf" value="{{ csrf }}">
 <div class="card"><div class="card-h"><h3>Default sender</h3></div><div class="card-b stack">
 <p class="muted small" style="margin:0">Each distributor's own daily summary always comes from this default sender. Buyers get theirs from the distributor: through the distributor's own Gmail/Twilio if they added one, otherwise from this default sender shown as "Distributor via {{ s.brand_name }}", with replies going to the distributor.</p>
-{{ m.field('Brand / sender name (e.g. SRS Engineering)','brand_name', s.brand_name) }}</div></div>
+{{ m.field('Brand / sender name (e.g. SRS Engineering)','brand_name', s.brand_name) }}
+{{ m.field('Public web address (used in password-reset emails)','app_url', s.app_url, extra='placeholder="https://reminder.srs-engineering.in"') }}</div></div>
 <div class="card"><div class="card-h"><h3>Automatic schedule</h3></div><div class="card-b stack">
 {{ m.field('Reminder days (relative to expiry; negative = after expiry)','reminder_days', days, extra='placeholder="30,15,7,1,0,-7"') }}
 <div class="grid2">{{ m.field('Send daily after (hour 0–23, ' ~ s.timezone ~ ')','reminder_hour', s.reminder_hour, 'number', extra='min="0" max="23"') }}{{ m.field('Default country code','country_code', s.country_code) }}</div></div></div>

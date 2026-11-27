@@ -14,7 +14,7 @@ from ..models import AppSetting, UserSetting
 
 # field -> (kind, is_secret)
 FIELDS: dict[str, tuple[str, bool]] = {
-    "brand_name": ("str", False),
+    "brand_name": ("str", False), "app_url": ("str", False),
     "reminder_days": ("days", False), "reminder_hour": ("int", False), "country_code": ("str", False),
     "smtp_host": ("str", False), "smtp_port": ("int", False), "smtp_user": ("str", False),
     "smtp_password": ("str", True), "smtp_from": ("str", False),

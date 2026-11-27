@@ -281,3 +281,66 @@ def test_dealer_sender_ui_encrypted(env):
     post(c, "/account/sender", {"clear": "1"}, "/account")
     with app.state.Session() as db:
         assert db.query(UserSetting).count() == 0
+
+
+def _reset_link(n):
+    import re as _re
+    texts = [t for ch, to, t in n.sent if ch == "email" and "/reset/" in t]
+    return _re.search(r"(https?://\S+)/reset/(\S+)", texts[-1]).group(2) if texts else None
+
+
+def test_forgot_and_reset_password(env):
+    app, c, n, s = env
+    s.app_url = "https://reminder.example.com"
+    # unknown email: same answer, nothing sent
+    r = post(c, "/forgot", {"email": "nobody@x.com"}, "/forgot")
+    assert r.status_code == 200 and "If that email is registered" in r.text and _reset_link(n) is None
+    # known email: link emailed, uses configured public address
+    r = post(c, "/forgot", {"email": "admin@x.com"}, "/forgot")
+    assert "If that email is registered" in r.text
+    assert "https://reminder.example.com/reset/" in n.sent[-1][2]
+    tok = _reset_link(n)
+    assert "Set a new password" in c.get(f"/reset/{tok}").text
+    # mismatch / short rejected
+    assert "do not match" in post(c, f"/reset/{tok}", {"password": "newpass123", "confirm": "different1"}, f"/reset/{tok}").text
+    assert "at least 8" in post(c, f"/reset/{tok}", {"password": "short", "confirm": "short"}, f"/reset/{tok}").text
+    # success
+    r = post(c, f"/reset/{tok}", {"password": "brandnew99", "confirm": "brandnew99"}, f"/reset/{tok}")
+    assert r.status_code == 303 and r.headers["location"] == "/login"
+    login(c, "admin@x.com", "brandnew99")
+    c.post("/logout", data={"csrf": csrf_of(c)})
+    # link is single-use
+    assert "Link expired" in c.get(f"/reset/{tok}").text
+    assert "Link expired" in post(c, f"/reset/{tok}", {"password": "another123", "confirm": "another123"}, "/login").text
+    # tampered link
+    assert "Link expired" in c.get(f"/reset/{tok}x").text
+
+
+def test_reset_link_expires_and_rate_limit(env, monkeypatch):
+    from app import security
+
+    app, c, n, s = env
+    post(c, "/forgot", {"email": "admin@x.com"}, "/forgot")
+    tok = _reset_link(n)
+    monkeypatch.setattr(security, "RESET_MAX_AGE", -1)  # pretend an hour has passed
+    assert "Link expired" in c.get(f"/reset/{tok}").text
+    monkeypatch.undo()
+    for _ in range(6):
+        r = post(c, "/forgot", {"email": "admin@x.com"}, "/forgot")
+    assert "Too many requests" in r.text
+
+
+def test_admin_resets_distributor_password_and_eye_toggle(env):
+    from app.security import hash_password
+
+    app, c, n, s = env
+    did, _, _ = seed(app, 7)
+    with app.state.Session() as db:
+        db.get(User, did).password_hash = hash_password("oldpassw0rd"); db.commit()
+    login(c, "admin@x.com", "adminpass1")
+    assert "data-pw-toggle" in c.get("/distributors").text  # show/hide password control on every page
+    assert post(c, f"/distributors/{did}/password", {"password": "short"}, "/distributors").status_code == 303
+    post(c, f"/distributors/{did}/password", {"password": "freshpass99"}, "/distributors")
+    c.post("/logout", data={"csrf": csrf_of(c)})
+    login(c, "d@x.com", "freshpass99")
+    assert "data-pw-toggle" in TestClient(app).get("/login").text

@@ -3,7 +3,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#13233b"><title>{% block title %}Marg Reminder{% endblock %}</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2313233b'/%3E%3Ctext x='16' y='21' font-family='Arial' font-weight='700' font-size='15' fill='%23f08c1a' text-anchor='middle'%3EMR%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="/static/fonts.css"><link rel="stylesheet" href="/static/style.css?v=3"></head>
+<link rel="stylesheet" href="/static/fonts.css"><link rel="stylesheet" href="/static/style.css?v=4"></head>
 <body>
 {% if user %}{% set p = request.url.path %}
 <div class="app">
@@ -36,4 +36,9 @@
 document.getElementById('menuBtn').onclick=function(){t(!s.classList.contains('open'))};document.getElementById('shade').onclick=function(){t(false)};
 s.addEventListener('click',function(e){if(e.target.closest('a'))t(false)})})();</script>
 {% else %}{% block bare %}{% endblock %}{% endif %}
+<script>(function(){var eye='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+off='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.9 17.9A10.9 10.9 0 0 1 12 20C5 20 1 12 1 12a18.5 18.5 0 0 1 5.1-5.9M9.9 4.2A10.7 10.7 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.2 3.2M1 1l22 22"/></svg>';
+document.querySelectorAll('input[type=password]').forEach(function(i){var w=document.createElement('div');w.className='pw';i.parentNode.insertBefore(w,i);w.appendChild(i);
+var b=document.createElement('button');b.type='button';b.className='pw-eye';b.setAttribute('aria-label','Show password');b.setAttribute('data-pw-toggle','');b.innerHTML=eye;w.appendChild(b);
+b.onclick=function(){var s=i.type==='password';i.type=s?'text':'password';b.innerHTML=s?off:eye;b.setAttribute('aria-label',s?'Hide password':'Show password')}})})();</script>
 </body></html>

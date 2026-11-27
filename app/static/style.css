@@ -174,3 +174,10 @@ table.tbl{border-collapse:collapse;width:100%}
   .btn{min-height:40px}.btn.sm{min-height:34px}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* show/hide password */
+.pw{position:relative;display:block}
+.pw .in{padding-right:42px}
+.pw-eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--ink-3);width:36px;height:36px;display:grid;place-items:center;border-radius:6px;cursor:pointer}
+.pw-eye:hover{color:var(--ink);background:var(--line-2)}
+details>summary.btn::before{content:none}

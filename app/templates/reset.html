@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% import "macros.html" as m %}{% block title %}Reset password · Marg Reminder{% endblock %}
+{% block bare %}<div class="login">{% include "_auth_left.html" %}
+<div class="login-r">{% if valid %}<form class="login-card" method="post" action="/reset/{{ token }}"><input type="hidden" name="csrf" value="{{ csrf }}">
+<h2>Set a new password</h2><p class="lg-sub">Choose a password with at least 8 characters.</p>
+{% if error %}<div class="err">{{ error }}</div>{% endif %}
+<div class="field"><label>New password</label><input class="in" name="password" type="password" minlength="8" required autocomplete="new-password" autofocus></div>
+<div class="field"><label>Confirm new password</label><input class="in" name="confirm" type="password" minlength="8" required autocomplete="new-password"></div>
+<button class="btn p block">Save new password</button></form>
+{% else %}<div class="login-card"><h2>Link expired</h2><p class="lg-sub">This reset link is invalid, already used, or older than 1 hour.</p>
+<a class="btn p block" href="/forgot">Get a new link</a><div style="text-align:center"><a href="/login" class="small">Back to sign in</a></div></div>{% endif %}</div></div>{% endblock %}

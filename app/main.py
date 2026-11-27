@@ -104,6 +104,7 @@ def create_app(settings: Settings | None = None, notifier: Notifier | None = Non
     app.state.settings, app.state.Session = settings, Session
     app.state.notifier = notifier or Notifier(settings)
     app.state.limiter = LoginLimiter()
+    app.state.reset_limiter = LoginLimiter(limit=5, window=900)
     app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, https_only=settings.cookie_secure,
                        same_site="lax", max_age=60 * 60 * 24 * 14)
     app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
