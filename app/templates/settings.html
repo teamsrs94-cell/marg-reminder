@@ -2,6 +2,7 @@
 {% macro sec(name) %}<input class="in" name="{{ name }}" type="password" autocomplete="new-password" placeholder="{{ '•••••• saved — leave blank to keep' if secrets_set[name] else 'not set' }}">{% endmacro %}
 {% block body %}
 <div class="page-h"><div><h2>Settings</h2><p>Sender accounts and schedule for the whole platform. Changes apply immediately.</p></div></div>{{ m.err(error) }}
+{% if mail_error %}<div class="err"><b>Last email problem:</b> {{ mail_error }}<br><span class="small">Check the Gmail details below and use "Send test email".</span></div>{% endif %}
 <div class="row">{% for c,ok in ready.items() %}<span class="pill {{ 'ready' if ok else 'off' }}">{{ c }}: {{ 'ready' if ok else 'not set up' }}</span>{% endfor %}</div>
 <form method="post" class="stack" style="max-width:760px"><input type="hidden" name="csrf" value="{{ csrf }}">
 <div class="card"><div class="card-h"><h3>Default sender</h3></div><div class="card-b stack">

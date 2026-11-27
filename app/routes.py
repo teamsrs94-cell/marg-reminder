@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session, joinedload
 from .models import Customer, ReminderLog, RunLog, Subscription, User, UserSetting
 from .security import (hash_password, make_reset_token, new_csrf, read_reset_token, reset_token_matches,
                        verify_password)
-from .services.notify import NotConfigured
 from .services import appsettings, importer
 from .services.util import add_one_year, fmt_date, normalize_phone, parse_date, valid_email
 
@@ -139,28 +138,33 @@ def forgot_page(request: Request):
 
 @router.post("/forgot", dependencies=[Depends(csrf)])
 def forgot(request: Request, email: str = Form(...), db: Session = Depends(get_db)):
-    st, lim = request.app.state.settings, request.app.state.reset_limiter
+    import logging
+
+    log = logging.getLogger("marg")
+    st, lim, n = request.app.state.settings, request.app.state.reset_limiter, request.app.state.notifier
+    if not n.configured("email"):  # a system-wide fact, so saying it reveals nothing about any account
+        return render(request, "forgot.html", sent=False,
+                      error="Email is not set up on this system yet, so we cannot send a reset link. "
+                            "Please ask your administrator to reset your password.")
     key = request.client.host if request.client else "?"
     if lim.blocked(key):
         return render(request, "forgot.html", sent=False, error="Too many requests. Please try again in 15 minutes.")
-    lim.fail(key)  # every request counts, so this can't be used to spam inboxes
+    lim.fail(key)  # every request counts, so this cannot be used to spam inboxes
     user = db.scalar(select(User).where(User.email == email.strip().lower()))
     if user and user.active:
         base = st.app_url or str(request.base_url).rstrip("/")
         link = f"{base}/reset/{make_reset_token(st.secret_key, user.id, user.password_hash)}"
-        text = (f"Hello {user.name},\n\nUse this link to set a new password for Marg Reminder. "
-                f"It works once and expires in 1 hour:\n{link}\n\nIf you did not ask for this, ignore this email.")
-        try:
-            ok, detail = request.app.state.notifier.send("email", user.email, text, [], "Reset your Marg Reminder password",
-                                                         from_name=st.brand_name)
-            if not ok:
-                import logging
-                logging.getLogger("marg").warning("Password reset email failed: %s", detail)
-        except NotConfigured:
-            import logging
-            logging.getLogger("marg").warning("Password reset requested but email is not configured")
-    # same answer whether or not the email exists, so accounts can't be probed
-    return render(request, "forgot.html", sent=True, error=None)
+        text = (f"Hello {user.name},\n\nClick the link below to set a new password for your Marg Reminder account. "
+                f"The link works once and stays valid for 1 hour.\n\n{link}\n\n"
+                "If you did not ask for this, just ignore this email. Your password will not change.")
+        ok, detail = n.send("email", user.email, text, [], "Reset your Marg Reminder password", from_name=st.brand_name)
+        if ok:
+            request.app.state.mail_error = ""
+        else:
+            request.app.state.mail_error = f"Password reset email to {user.email} failed: {detail}"
+            log.warning("Password reset email failed: %s", detail)
+    # same answer whether or not the email exists, so accounts cannot be probed
+    return render(request, "forgot.html", sent=True, error=None, email=email.strip())
 
 
 def _reset_user(request: Request, db: Session, token: str):
@@ -541,11 +545,20 @@ def account(request: Request, user: User = Depends(current_user), db: Session = 
 
 @router.post("/account", dependencies=[Depends(csrf)])
 def account_save(request: Request, name: str = Form(...), company: str = Form(""), phone: str = Form(""),
-                 current_password: str = Form(""), new_password: str = Form(""),
+                 email: str = Form(""), current_password: str = Form(""), new_password: str = Form(""),
                  user: User = Depends(current_user), db: Session = Depends(get_db)):
     cc = request.app.state.settings.country_code
     if phone.strip() and not normalize_phone(phone, cc):
         return render(request, "account.html", user, error="Enter a valid mobile number.", **_account_ctx(request, db, user))
+    new_email = email.strip().lower()
+    if new_email and new_email != user.email:
+        if not valid_email(new_email):
+            return render(request, "account.html", user, error="Enter a valid email address.", **_account_ctx(request, db, user))
+        if db.scalar(select(User).where(User.email == new_email)):
+            return render(request, "account.html", user, error="That email is already used by another account.", **_account_ctx(request, db, user))
+        if not verify_password(current_password, user.password_hash):
+            return render(request, "account.html", user, error="Enter your current password to change your login email.", **_account_ctx(request, db, user))
+        user.email = new_email
     if new_password:
         if not verify_password(current_password, user.password_hash):
             return render(request, "account.html", user, error="Current password is wrong.", **_account_ctx(request, db, user))
@@ -565,6 +578,7 @@ def _settings_ctx(request, **extra):
     n = request.app.state.notifier
     secrets_set = {k: bool(getattr(s, k)) for k, (_, sec) in appsettings.FIELDS.items() if sec}
     return dict(s=s, days=",".join(map(str, s.reminder_days)), secrets_set=secrets_set,
+                mail_error=getattr(request.app.state, "mail_error", ""),
                 ready={c: n.configured(c) for c in ("email", "sms", "whatsapp")}, **extra)
 
 

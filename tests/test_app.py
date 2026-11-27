@@ -294,10 +294,10 @@ def test_forgot_and_reset_password(env):
     s.app_url = "https://reminder.example.com"
     # unknown email: same answer, nothing sent
     r = post(c, "/forgot", {"email": "nobody@x.com"}, "/forgot")
-    assert r.status_code == 200 and "If that email is registered" in r.text and _reset_link(n) is None
+    assert r.status_code == 200 and "Check your inbox" in r.text and _reset_link(n) is None
     # known email: link emailed, uses configured public address
     r = post(c, "/forgot", {"email": "admin@x.com"}, "/forgot")
-    assert "If that email is registered" in r.text
+    assert "Check your inbox" in r.text and "admin@x.com" in r.text
     assert "https://reminder.example.com/reset/" in n.sent[-1][2]
     tok = _reset_link(n)
     assert "Set a new password" in c.get(f"/reset/{tok}").text
@@ -344,3 +344,31 @@ def test_admin_resets_distributor_password_and_eye_toggle(env):
     c.post("/logout", data={"csrf": csrf_of(c)})
     login(c, "d@x.com", "freshpass99")
     assert "data-pw-toggle" in TestClient(app).get("/login").text
+
+
+def test_forgot_shows_problem_when_email_not_set_up_or_failing(env):
+    app, c, n, s = env
+    app.state.notifier = FakeNotifier(s, channels=("sms",))  # email not configured
+    r = post(c, "/forgot", {"email": "admin@x.com"}, "/forgot")
+    assert "Email is not set up" in r.text and "Check your inbox" not in r.text
+    app.state.notifier = FakeNotifier(s, fail=("email",))  # configured but the provider refuses
+    r = post(c, "/forgot", {"email": "admin@x.com"}, "/forgot")
+    assert "Check your inbox" in r.text  # user still gets the neutral answer ...
+    login(c, "admin@x.com", "adminpass1")
+    assert "Last email problem" in c.get("/settings").text  # ... but the admin can see what went wrong
+
+
+def test_change_login_email_and_cli_reset(env, tmp_path, monkeypatch):
+    app, c, n, s = env
+    login(c, "admin@x.com", "adminpass1")
+    base = {"name": "Admin", "company": "", "phone": ""}
+    assert "current password" in post(c, "/account", {**base, "email": "real@x.com"}, "/account").text
+    assert post(c, "/account", {**base, "email": "real@x.com", "current_password": "adminpass1"}, "/account").status_code == 303
+    c.post("/logout", data={"csrf": csrf_of(c)})
+    login(c, "real@x.com", "adminpass1")
+    # emergency CLI
+    from app import cli
+    monkeypatch.setenv("DATABASE_URL", s.database_url)
+    assert cli.main(["reset-password", "real@x.com", "cli-pass-123"]) == 0
+    c.post("/logout", data={"csrf": csrf_of(c)})
+    login(c, "real@x.com", "cli-pass-123")
