@@ -1,12 +1,13 @@
 {% extends "base.html" %}{% import "macros.html" as m %}{% block title %}Distributors{% endblock %}
-{% block body %}<h1>Distributors</h1>{{ m.err(error) }}
-<div class="card list">{% for d in rows %}<div class="item"><div class="row between"><span class="t">{{ d.company or d.name }}</span>
-<span class="badge {{ 'active' if d.active else 'expired' }}">{{ 'active' if d.active else 'disabled' }}</span></div>
-<div class="s">{{ d.name }} · {{ d.email }}{% if d.phone %} · {{ d.phone }}{% endif %} · {{ counts.get(d.id, 0) }} customers</div>
-<form method="post" action="/distributors/{{ d.id }}/toggle" style="margin-top:8px"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn ghost sm">{{ 'Disable' if d.active else 'Enable' }}</button></form></div>
-{% else %}<div class="item mute">No distributors yet.</div>{% endfor %}</div>
-<h2>Add distributor</h2><form class="card" method="post"><input type="hidden" name="csrf" value="{{ csrf }}">
-<label>Contact name *</label><input name="name" required><label>Company</label><input name="company">
-<label>Email * (login)</label><input name="email" type="email" required><label>Mobile (gets reminder digests)</label><input name="phone" type="tel" inputmode="tel">
-<label>Initial password * (min 8)</label><input name="password" type="password" minlength="8" required autocomplete="new-password">
-<p><button class="btn">Create</button></p></form>{% endblock %}
+{% block body %}
+<div class="page-h"><div><h2>Distributors</h2><p>Each distributor logs in and manages only their own customers.</p></div></div>{{ m.err(error) }}
+<div class="card">{% if rows %}<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Distributor</th><th>Login email</th><th>Mobile</th><th>Customers</th><th>Status</th><th></th></tr></thead><tbody>
+{% for d in rows %}<tr><td class="first" data-l=""><b>{{ d.company or d.name }}</b><div class="muted small">{{ d.name }}</div></td><td data-l="Email">{{ d.email }}</td><td data-l="Mobile" class="num">{{ d.phone or '—' }}</td>
+<td data-l="Customers" class="num">{{ counts.get(d.id, 0) }}</td><td data-l="Status"><span class="pill {{ 'active' if d.active else 'expired' }}">{{ 'active' if d.active else 'disabled' }}</span></td>
+<td class="actions" data-l=""><form method="post" action="/distributors/{{ d.id }}/toggle"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn sm">{{ 'Disable' if d.active else 'Enable' }}</button></form></td></tr>{% endfor %}</tbody></table></div>
+{% else %}<div class="empty">No distributors yet.</div>{% endif %}</div>
+<form class="card" method="post" style="max-width:720px"><div class="card-h"><h3>Add distributor</h3></div><div class="card-b stack"><input type="hidden" name="csrf" value="{{ csrf }}">
+<div class="grid2">{{ m.field('Contact name','name', required=True) }}{{ m.field('Company','company') }}</div>
+<div class="grid2">{{ m.field('Email (login)','email', type='email', required=True) }}{{ m.field('Mobile (gets reminder digests)','phone', type='tel', extra='inputmode="tel"') }}</div>
+{{ m.field('Initial password (min 8)','password', type='password', required=True, extra='minlength="8" autocomplete="new-password"') }}
+<div><button class="btn p">Create distributor</button></div></div></form>{% endblock %}

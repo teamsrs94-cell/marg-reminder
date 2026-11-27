@@ -1,12 +1,13 @@
 {% extends "base.html" %}{% import "macros.html" as m %}{% block title %}Renewals{% endblock %}
-{% block body %}<h1>Renewals <span class="mute">({{ total }})</span></h1>
-<form class="filters" method="get"><input name="q" value="{{ q }}" placeholder="Search customer, phone, licence, city" type="search">
-<select name="status" onchange="this.form.submit()"><option value="">All</option>
+{% block body %}
+<div class="page-h"><div><h2>Renewals</h2><p>{{ total }} subscription{{ '' if total==1 else 's' }}, soonest expiry first.</p></div></div>
+<form class="toolbar" method="get"><input class="in" name="q" value="{{ q }}" placeholder="Search customer, phone, licence, city" type="search">
+<select class="in" name="status" onchange="this.form.submit()"><option value="">All</option>
 {% for v,l in [('expired','Expired'),('soon','Next 30 days'),('active','Active')] %}<option value="{{ v }}" {{ 'selected' if status==v }}>{{ l }}</option>{% endfor %}</select>
-<button class="btn">Search</button></form>
-<div class="card list">{% for s in rows %}
-<div class="item"><div class="row between"><a class="t" href="/customers/{{ s.customer_id }}">{{ s.customer.name }}</a>{{ m.badge(s.expiry_date, t) }}</div>
-<div class="s">{{ s.product }}{% if s.license_no %} · {{ s.license_no }}{% endif %} · expires {{ s.expiry_date|dmy }}</div>
-<div class="row" style="margin-top:8px">{{ m.renew(s, csrf) }}<a class="btn ghost sm" href="/subscriptions/{{ s.id }}/edit">Edit</a></div></div>
-{% else %}<div class="item mute">No subscriptions found.</div>{% endfor %}</div>
-{{ m.pager(page, pages, '&q=' ~ (q|urlencode) ~ '&status=' ~ status) }}{% endblock %}
+<button class="btn p">Search</button></form>
+<div class="card">{% if rows %}<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Customer</th><th>Product</th><th>Licence</th><th>Expiry</th><th>Status</th><th></th></tr></thead><tbody>
+{% for s in rows %}<tr><td class="first" data-l=""><b><a href="/customers/{{ s.customer_id }}">{{ s.customer.name }}</a></b>{% if s.customer.city %}<div class="muted small">{{ s.customer.city }}</div>{% endif %}</td>
+<td data-l="Product">{{ s.product }}</td><td data-l="Licence">{{ s.license_no or '—' }}</td><td data-l="Expiry" class="num">{{ s.expiry_date|dmy }}</td><td data-l="Status">{{ m.badge(s.expiry_date, t) }}</td>
+<td class="actions" data-l=""><div class="row">{{ m.renew(s, csrf) }}<a class="btn sm" href="/subscriptions/{{ s.id }}/edit">Edit</a></div></td></tr>{% endfor %}</tbody></table></div>
+{% else %}<div class="empty">No subscriptions found.</div>{% endif %}
+{{ m.pager(page, pages, '&q=' ~ (q|urlencode) ~ '&status=' ~ status) }}</div>{% endblock %}

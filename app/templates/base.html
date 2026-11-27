@@ -1,22 +1,39 @@
-<!doctype html>
+{% import "macros.html" as m %}<!doctype html>
 <html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#1a5fd1"><title>{% block title %}Marg Reminder{% endblock %}</title>
-<link rel="stylesheet" href="/static/style.css"></head><body>
-{% if user %}
-<header class="top"><span class="logo">🔔 Marg Reminder</span>
-<a href="/account" class="mute">{{ user.name }}{% if user.is_admin %} (Super Admin){% endif %}</a>
-<form method="post" action="/logout"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn ghost sm">Logout</button></form></header>
-{% set p = request.url.path %}
-<nav class="main">
-<a href="/" class="{{ 'on' if p=='/' }}"><b>🏠</b>Home</a>
-<a href="/subscriptions" class="{{ 'on' if p.startswith('/subscriptions') }}"><b>📋</b>Renewals</a>
-<a href="/customers" class="{{ 'on' if p.startswith('/customers') }}"><b>👥</b>Customers</a>
-<a href="/reminders" class="{{ 'on' if p.startswith('/reminders') }}"><b>✉️</b>Reminders</a>
-{% if user.is_admin %}<a href="/distributors" class="{{ 'on' if p.startswith('/distributors') }}"><b>🏢</b>Distributors</a>{% endif %}
-{% if user.is_admin %}<a href="/settings" class="{{ 'on' if p.startswith('/settings') }}"><b>⚙️</b>Settings</a>{% endif %}
-<a href="/import" class="{{ 'on' if p.startswith('/import') }}"><b>⬆️</b>Import</a>
-</nav>
-{% endif %}
-<main>{% if flash %}<div class="flash">{{ flash }}</div>{% endif %}{% block body %}{% endblock %}</main>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#13233b"><title>{% block title %}Marg Reminder{% endblock %}</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2313233b'/%3E%3Ctext x='16' y='21' font-family='Arial' font-weight='700' font-size='15' fill='%23f08c1a' text-anchor='middle'%3EMR%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/fonts.css"><link rel="stylesheet" href="/static/style.css?v=3"></head>
+<body>
+{% if user %}{% set p = request.url.path %}
+<div class="app">
+<div class="side-shade" id="shade"></div>
+<aside class="side" id="side">
+  <div class="brand"><div class="logo">MR</div><div><b>Marg Reminder</b><span>Renewal alerts</span></div></div>
+  <nav class="nav">
+    <a href="/" class="{{ 'on' if p=='/' }}">{{ m.icon('home') }}Dashboard</a>
+    <a href="/subscriptions" class="{{ 'on' if p.startswith('/subscriptions') }}">{{ m.icon('renew') }}Renewals</a>
+    <a href="/customers" class="{{ 'on' if p.startswith('/customers') }}">{{ m.icon('users') }}Customers</a>
+    <a href="/reminders" class="{{ 'on' if p.startswith('/reminders') }}">{{ m.icon('bell') }}Reminders</a>
+    <a href="/import" class="{{ 'on' if p.startswith('/import') }}">{{ m.icon('upload') }}Import</a>
+    {% if user.is_admin %}<div class="nav-label">Super Admin</div>
+    <a href="/distributors" class="{{ 'on' if p.startswith('/distributors') }}">{{ m.icon('building') }}Distributors</a>
+    <a href="/settings" class="{{ 'on' if p.startswith('/settings') }}">{{ m.icon('gear') }}Settings</a>{% endif %}
+    <div class="nav-label">Account</div>
+    <a href="/account" class="{{ 'on' if p.startswith('/account') }}">{{ m.icon('user') }}My account</a>
+  </nav>
+  <div class="me"><span class="av">{{ (user.name or 'U')[:1]|upper }}</span><div><b>{{ user.name }}</b><small>{{ 'Super Admin' if user.is_admin else 'Distributor' }}</small></div></div>
+</aside>
+<div class="main">
+  <header class="top">
+    <button class="menu-btn" id="menuBtn" aria-label="Open menu" style="width:34px;height:34px">{{ m.icon('menu') }}</button>
+    <h1>{{ self.title()|replace(' · Marg Reminder','') }}</h1><div class="sp"></div>
+    <form method="post" action="/logout" style="margin:0"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn r sm">Logout</button></form>
+  </header>
+  <main class="content"><div class="wrap">{% if flash %}<div class="flash">{{ flash }}</div>{% endif %}{% block body %}{% endblock %}</div></main>
+</div></div>
+<script>(function(){var b=document.body,s=document.getElementById('side');function t(o){b.classList.toggle('menu-open',o);s.classList.toggle('open',o)}
+document.getElementById('menuBtn').onclick=function(){t(!s.classList.contains('open'))};document.getElementById('shade').onclick=function(){t(false)};
+s.addEventListener('click',function(e){if(e.target.closest('a'))t(false)})})();</script>
+{% else %}{% block bare %}{% endblock %}{% endif %}
 </body></html>

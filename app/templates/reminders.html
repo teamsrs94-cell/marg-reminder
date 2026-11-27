@@ -1,10 +1,17 @@
 {% extends "base.html" %}{% import "macros.html" as m %}{% block title %}Reminders{% endblock %}
-{% block body %}<h1>Reminders</h1>
-<div class="card"><div class="mute">Sent daily after {{ '%02d'|format(hour) }}:00 · days vs expiry: {{ schedule|join(', ') }}</div>
-<div class="row" style="margin-top:8px">{% for c,ok in channels.items() %}<span class="badge {{ 'active' if ok else 'expired' }}">{{ c }}: {{ 'ready' if ok else 'not set up' }}</span>{% endfor %}</div>
-{% if user.is_admin %}<form method="post" action="/reminders/run" style="margin-top:10px"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn sm">Run reminders now</button></form>{% endif %}</div>
-{% if user.is_admin %}<h2>Automatic runs</h2><div class="card list">{% for r in runs %}<div class="item"><div class="row between"><span class="t">{{ r.started_at.strftime('%d-%m %H:%M') }} UTC</span><span class="badge {{ 'failed' if r.error or r.failed else 'sent' }}">{{ 'problem' if r.error or r.failed else 'ok' }}</span></div><div class="s">{{ r.summary }}{% if r.error %} · {{ r.error }}{% endif %}</div></div>
-{% else %}<div class="item mute">No automatic run yet — the first one happens after {{ '%02d'|format(hour) }}:00.</div>{% endfor %}</div>{% endif %}
-<h2>Messages</h2><div class="card list">{% for r in rows %}<div class="item"><div class="row between"><span class="t">{{ r.subscription.customer.name }}</span><span class="badge {{ r.status }}">{{ r.status }}</span></div>
-<div class="s">{{ r.recipient }} · {{ r.channel }} · {{ r.to_address }} · {{ r.created_at.strftime('%d-%m %H:%M') }}{% if r.status=='failed' %}<br>{{ r.detail }}{% endif %}</div></div>
-{% else %}<div class="item mute">No reminders sent yet.</div>{% endfor %}</div>{{ m.pager(page, pages) }}{% endblock %}
+{% block body %}
+<div class="page-h"><div><h2>Reminders</h2><p>Sent automatically every day after {{ '%02d'|format(hour) }}:00. Days relative to expiry: {{ schedule|join(', ') }}.</p></div><div class="sp"></div>
+{% if user.is_admin %}<form method="post" action="/reminders/run"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn o">Run reminders now</button></form>{% endif %}</div>
+<div class="row">{% for c,ok in channels.items() %}<span class="pill {{ 'ready' if ok else 'off' }}">{{ c }}: {{ 'ready' if ok else 'not set up' }}</span>{% endfor %}</div>
+{% if user.is_admin %}<div class="card"><div class="card-h"><h3>Automatic runs</h3></div>
+{% if runs %}<div class="tbl-wrap"><table class="tbl"><thead><tr><th>When (UTC)</th><th>Result</th><th>Status</th></tr></thead><tbody>{% for r in runs %}
+<tr><td class="first num" data-l="">{{ r.started_at.strftime('%d-%m %H:%M') }}</td><td data-l="Result">{{ r.summary }}{% if r.error %} · {{ r.error }}{% endif %}</td>
+<td data-l="Status"><span class="pill {{ 'failed' if r.error or r.failed else 'sent' }}">{{ 'problem' if r.error or r.failed else 'ok' }}</span></td></tr>{% endfor %}</tbody></table></div>
+{% else %}<div class="empty">No automatic run yet — the first one happens after {{ '%02d'|format(hour) }}:00.</div>{% endif %}</div>{% endif %}
+<div class="card"><div class="card-h"><h3>Messages</h3></div>
+{% if rows %}<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Customer</th><th>To</th><th>Channel</th><th>Sent to</th><th>When</th><th>Status</th></tr></thead><tbody>
+{% for r in rows %}<tr><td class="first" data-l=""><b>{{ r.subscription.customer.name }}</b>{% if r.status=='failed' %}<div class="muted small">{{ r.detail }}</div>{% elif 'sent via default' in r.detail %}<div class="muted small">{{ r.detail }}</div>{% endif %}</td>
+<td data-l="To">{{ r.recipient }}</td><td data-l="Channel">{{ r.channel }}</td><td data-l="Sent to" class="num">{{ r.to_address }}</td><td data-l="When" class="num">{{ r.created_at.strftime('%d-%m %H:%M') }}</td>
+<td data-l="Status"><span class="pill {{ r.status }}">{{ r.status }}</span></td></tr>{% endfor %}</tbody></table></div>
+{% else %}<div class="empty">No reminders sent yet.</div>{% endif %}
+{{ m.pager(page, pages) }}</div>{% endblock %}

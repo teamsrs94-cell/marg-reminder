@@ -1,16 +1,22 @@
-{% extends "base.html" %}{% import "macros.html" as m %}
-{% block body %}<h1>Hello, {{ user.name }}</h1>
-<div class="grid">
-<a class="stat bad" href="/subscriptions?status=expired"><div class="n">{{ stats.expired }}</div><div class="l">Expired</div></a>
-<a class="stat warn" href="/subscriptions?status=soon"><div class="n">{{ stats.week }}</div><div class="l">Expiring in 7 days</div></a>
-<a class="stat warn" href="/subscriptions?status=soon"><div class="n">{{ stats.month }}</div><div class="l">Expiring in 30 days</div></a>
-<a class="stat ok" href="/subscriptions"><div class="n">{{ stats.active }}</div><div class="l">Active</div></a>
-<a class="stat" href="/customers"><div class="n">{{ stats.customers }}</div><div class="l">Customers</div></a></div>
-<h2>Needs attention</h2>
-{% if attention %}<div class="card list">{% for s in attention %}
-<div class="item"><div class="row between"><a class="t" href="/customers/{{ s.customer_id }}">{{ s.customer.name }}</a>{{ m.badge(s.expiry_date, t) }}</div>
-<div class="s">{{ s.product }} · {{ s.expiry_date|dmy }}{% if s.customer.phone %} · <a href="tel:+{{ s.customer.phone }}">{{ s.customer.phone }}</a>{% endif %}</div>
-<div class="row" style="margin-top:8px">{{ m.renew(s, csrf) }}
-{% if s.customer.phone %}<a class="btn ghost sm" href="https://wa.me/{{ s.customer.phone }}">WhatsApp</a>{% endif %}</div></div>{% endfor %}</div>
-{% else %}<div class="card mute">Nothing expiring in the next 30 days 🎉</div>{% endif %}
-<a class="btn fab" href="/customers/new">+ Customer</a>{% endblock %}
+{% extends "base.html" %}{% import "macros.html" as m %}{% block title %}Dashboard{% endblock %}
+{% block body %}
+<div class="page-h"><div><h2>Hello, {{ user.name }}</h2><p>Here is where your renewals stand today.</p></div><div class="sp"></div>
+<a class="btn p" href="/customers/new">{{ m.icon('plus') }}Add customer</a></div>
+<div class="kpis">
+<a class="card kpi" style="--c:var(--red)" href="/subscriptions?status=expired"><div class="eyebrow">Expired</div><div class="v num">{{ stats.expired }}</div><div class="d">Renew now to win them back</div></a>
+<a class="card kpi" style="--c:var(--orange)" href="/subscriptions?status=soon"><div class="eyebrow">Expiring in 7 days</div><div class="v num">{{ stats.week }}</div><div class="d">Most urgent</div></a>
+<a class="card kpi" style="--c:var(--amber)" href="/subscriptions?status=soon"><div class="eyebrow">Expiring in 30 days</div><div class="v num">{{ stats.month }}</div><div class="d">Reminders are queued</div></a>
+<a class="card kpi" style="--c:var(--green)" href="/subscriptions"><div class="eyebrow">Active</div><div class="v num">{{ stats.active }}</div><div class="d">Subscriptions running</div></a>
+<a class="card kpi" style="--c:var(--blue)" href="/customers"><div class="eyebrow">Customers</div><div class="v num">{{ stats.customers }}</div><div class="d">In your book</div></a></div>
+<div class="dash">
+<div class="card"><div class="card-h"><h3>Needs attention</h3><div class="sp"></div><a class="btn sm" href="/subscriptions?status=soon">View all</a></div>
+{% if attention %}<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Customer</th><th>Product</th><th>Expiry</th><th>Status</th><th></th></tr></thead><tbody>
+{% for s in attention %}<tr><td class="first" data-l=""><b><a href="/customers/{{ s.customer_id }}">{{ s.customer.name }}</a></b>{% if s.customer.phone %}<div class="muted small"><a href="tel:+{{ s.customer.phone }}">{{ s.customer.phone }}</a></div>{% endif %}</td>
+<td data-l="Product">{{ s.product }}</td><td data-l="Expiry" class="num">{{ s.expiry_date|dmy }}</td><td data-l="Status">{{ m.badge(s.expiry_date, t) }}</td>
+<td class="actions" data-l=""><div class="row">{{ m.renew(s, csrf) }}{% if s.customer.phone %}<a class="btn sm" href="https://wa.me/{{ s.customer.phone }}">WhatsApp</a>{% endif %}</div></td></tr>{% endfor %}</tbody></table></div>
+{% else %}<div class="empty">Nothing expiring in the next 30 days 🎉</div>{% endif %}</div>
+<div class="card"><div class="card-h"><h3>How it works</h3></div><div class="card-b"><ol class="steps">
+<li><i>1</i><p style="margin:0"><b>Add customers</b><span>One by one, or import an Excel/CSV file.</span></p></li>
+<li><i>2</i><p style="margin:0"><b>Enter the expiry date</b><span>Marg edition, licence and expiry for each subscription.</span></p></li>
+<li><i>3</i><p style="margin:0"><b>Reminders run by themselves</b><span>Customers and you are alerted on schedule.</span></p></li>
+<li><i>4</i><p style="margin:0"><b>Tap Renewed ✓</b><span>It restarts the cycle for another year.</span></p></li></ol></div></div></div>{% endblock %}

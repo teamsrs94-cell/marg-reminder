@@ -1,7 +1,9 @@
 {% extends "base.html" %}{% import "macros.html" as m %}{% block title %}Customers{% endblock %}
-{% block body %}<div class="row between"><h1>Customers <span class="mute">({{ total }})</span></h1><a class="btn sm hide-m" href="/customers/new">+ Add</a></div>
-<form class="filters" method="get"><input name="q" value="{{ q }}" placeholder="Search name, phone, city" type="search"><button class="btn">Search</button></form>
-<div class="card list">{% for c in rows %}<a class="item" href="/customers/{{ c.id }}"><div class="t">{{ c.name }}</div>
-<div class="s">{{ c.contact_person }}{% if c.city %} · {{ c.city }}{% endif %}{% if c.phone %} · {{ c.phone }}{% endif %}</div></a>
-{% else %}<div class="item mute">No customers yet. <a href="/customers/new">Add one</a> or <a href="/import">import a file</a>.</div>{% endfor %}</div>
-{{ m.pager(page, pages, '&q=' ~ (q|urlencode)) }}<a class="btn fab" href="/customers/new">+ Customer</a>{% endblock %}
+{% block body %}
+<div class="page-h"><div><h2>Customers</h2><p>{{ total }} customer{{ '' if total==1 else 's' }} in your book.</p></div><div class="sp"></div><a class="btn p" href="/customers/new">{{ m.icon('plus') }}Add customer</a></div>
+<form class="toolbar" method="get"><input class="in" name="q" value="{{ q }}" placeholder="Search name, phone, city" type="search"><button class="btn p">Search</button></form>
+<div class="card">{% if rows %}<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Customer</th><th>Contact</th><th>Mobile</th><th>City</th><th>Reminders</th></tr></thead><tbody>
+{% for c in rows %}<tr><td class="first" data-l=""><b><a href="/customers/{{ c.id }}">{{ c.name }}</a></b></td><td data-l="Contact">{{ c.contact_person or '—' }}</td>
+<td data-l="Mobile" class="num">{{ c.phone or '—' }}</td><td data-l="City">{{ c.city or '—' }}</td><td data-l="Reminders"><span class="pill {{ 'ready' if c.notify else 'off' }}">{{ 'On' if c.notify else 'Off' }}</span></td></tr>{% endfor %}</tbody></table></div>
+{% else %}<div class="empty">No customers yet. <a href="/customers/new">Add one</a> or <a href="/import">import a file</a>.</div>{% endif %}
+{{ m.pager(page, pages, '&q=' ~ (q|urlencode)) }}</div>{% endblock %}
